@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+data/
+config/local.yaml
+# 凭据绝不入库
+*.p8
+*.pem
+.env
+# firmware
+.pio/
+# iOS
+ios/*.xcodeproj/
+ios/build/
+DerivedData/
+.DS_Store

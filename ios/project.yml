@@ -1,0 +1,30 @@
+# 用 XcodeGen 生成工程： brew install xcodegen && cd ios && xcodegen
+# 生成后在 Xcode 的 Signing & Capabilities 里选择你自己的 Team。
+name: Tech12000
+options:
+  bundleIdPrefix: com.example      # 改成你自己的反向域名
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Tech12000:
+    type: application
+    platform: iOS
+    sources: [Tech12000]
+    info:
+      path: Tech12000/Info.plist
+      properties:
+        CFBundleDisplayName: TECH12000
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: 需要访问本地网络，以连接同一局域网内运行监测程序的电脑。
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true     # 第一版局域网内为明文 HTTP
+        CFBundleURLTypes:
+          - CFBundleURLName: pair
+            CFBundleURLSchemes: [tech12000]   # 系统相机扫电脑界面上的二维码即可配对
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO

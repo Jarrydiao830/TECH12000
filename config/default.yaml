@@ -1,0 +1,72 @@
+# TECH12000 默认配置。
+# 本机覆盖请写到 config/local.yaml（已被 .gitignore 忽略），只写需要改的键。
+#
+# 重要：fusion 下的所有阈值都是【未经实验标定的占位值】，只为让模拟模式能跑通，
+# 不代表任何已验证的检测性能，必须用真实数据重新标定。
+
+data_dir: data
+
+sources:
+  # 每个数据源的 driver:
+  #   sim      内置模拟数据（默认，无需硬件）
+  #   serial   wristband: 经固定端ESP32的USB串口（协议见 docs/protocol.md，由本项目固件定义）
+  #   rs6240   radar: 待官方SDK/协议文档到位后实现
+  #   none     不使用
+  wristband:
+    driver: sim
+    port: null          # 例如 /dev/cu.usbmodemXXXX，以实际枚举为准
+    baud: 921600        # 仅对UART桥有意义；原生USB CDC会忽略
+    stale_timeout_s: 0.5
+  radar:
+    driver: sim
+    port: null
+    stale_timeout_s: 1.0
+  # 判为 Ready 所必需的数据源；缺任何一个 -> Fault
+  required: [wristband, radar]
+
+actuators:
+  servo:
+    driver: sim         # sim | hiwonder（待官方协议文档到位后实现）| none
+    port: null
+    channel: null       # 控制器通道号，接线确定后填写
+    # X70S 包装标注的脉宽范围，作为硬限幅
+    pulse_min_us: 500
+    pulse_max_us: 2500
+    # 以下位置必须按实际机构测量后填写；为 null 时对应动作被拒绝执行
+    home_pulse_us: null
+    release_pulse_us: null
+    demo_pulse_us: null       # DEMO 模式的小角度动作目标
+    move_time_ms: null
+  led:
+    driver: sim         # sim | receiver（经固定端ESP32）| none
+
+fusion:
+  init_settle_s: 1.0          # 所有必需数据源连续新鲜这么久后 Initializing -> Ready
+  suspect_timeout_s: 3.0      # Suspected 无进一步证据则回到 Ready
+  coincidence_s: 1.0          # 手环候选与雷达候选的最大时间差
+  wrist:
+    window_s: 0.6
+    impact_accel_ms2: 25.0    # 占位值，未标定
+    freefall_accel_ms2: 4.0   # 占位值，未标定
+    gyro_dps: 200.0           # 占位值，未标定
+  radar:
+    window_s: 1.0
+    height_drop_m: 0.5        # 占位值，未标定
+    min_track_frames: 5
+    # 监测/保护区域（雷达坐标系，单位m）；null 表示不限制。坐标定义待SDK文档确认
+    zone: null                # 例如 {x: [-1.0, 1.0], y: [0.3, 2.5]}
+
+server:
+  # 操作员界面：只监听本机回环地址，含使能/复位等控制
+  operator_host: 127.0.0.1
+  operator_port: 8765
+  # 手机接口：监听局域网，只读，需配对令牌
+  mobile_host: 0.0.0.0
+  mobile_port: 8000
+  status_push_hz: 5
+
+apns:
+  enabled: false
+  # 凭据只通过环境变量提供，不写入配置文件或仓库：
+  #   TECH12000_APNS_KEY_PATH / TECH12000_APNS_KEY_ID / TECH12000_APNS_TEAM_ID / TECH12000_APNS_BUNDLE_ID
+  use_sandbox: true
