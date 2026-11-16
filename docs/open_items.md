@@ -36,7 +36,7 @@
 - 实物是 6 / 9 / 10 轴哪一版（协议相同；本项目只用加速度和角速度）。
 - 100 Hz 设置是否生效：手环串口每 5 s 打印 IMU 帧数，或先用 `tech12000 imu-probe --port … --rate 100` 直连确认。
 - 传感器坐标轴方向（板上丝印 X/Y/Z）；当前融合规则只用合加速度和合角速度，不依赖方向。
-- 手环固件整体还没用 PlatformIO 编译过（本机未装）；协议解析部分已用 `firmware/test/test_yb_imu_protocol.cpp` 在电脑上测试。
+- 手环固件已于 2026-11-16 在 Windows 上用 PlatformIO 编译通过（espressif32 8.0.0），尚未上板；协议解析部分已用 `firmware/test/test_yb_imu_protocol.cpp` 在电脑上测试。
 
 ## RS6240 雷达（驱动已实现，待实物确认）
 

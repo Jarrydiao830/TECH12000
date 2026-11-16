@@ -37,7 +37,7 @@ static void enqueue(const uint8_t *data, int len, int8_t rssi) {
   it.len = (uint8_t)min(len, 255);
   memset(&it.pkt, 0, sizeof(it.pkt));
   memcpy(&it.pkt, data, min((size_t)len, sizeof(it.pkt)));
-  if (xQueueSend(g_q, &it, 0) != pdTRUE) g_overflow++;  // 电脑没在读：丢新包并计数，不阻塞
+  if (xQueueSend(g_q, &it, 0) != pdTRUE) g_overflow = g_overflow + 1;  // 电脑没在读：丢新包并计数，不阻塞
 }
 
 #if ESP_ARDUINO_VERSION_MAJOR >= 3

@@ -71,11 +71,15 @@ RS6240 页面列出的文件：模组规格书 V1.0、开发板使用手册 V1.3
 
 进入 ARMED 的条件：状态 Ready + 舵机驱动就绪 + 通道/释放位置/动作时间已配置 + 本机界面输入 `ARM` 确认。
 
-### 固件（`firmware/`，PlatformIO + Arduino）— 未在真实工具链上编译，未上板
+### 固件（`firmware/`，PlatformIO + Arduino）— 三个环境均已编译通过，未上板
+
+2026-11-16 在 Windows 上编译：PlatformIO Core 6.2.0，平台 espressif32 8.0.0（Arduino-ESP32 3.3.12）。
+`receiver`、`wristband_sim`、`wristband` 都一次通过，无报错；只把接收板里一处 `volatile` 自增的弃用警告改掉了。
+Flash 占用约 25%（按默认 4 MB 分区表算）。
 
 - `common/protocol.h`：ESP-NOW 定长包（magic、version、flags、device_id、session_id、seq、t_mcu_us、t_imu_us、accel[3] m/s²、gyro[3] °/s、crc16）。
 - `wristband/src/yb_imu_protocol.h`：亚博 IMU 协议解析（纯 C++），`firmware/test/test_yb_imu_protocol.cpp` 可在电脑上单独编译测试。
-- `wristband/`：环境 `wristband_sim`（固件内模拟 100 Hz IMU，用于先打通链路）和 `wristband`（真实 IMU，按亚博协议实现，未编译未上板）。发送失败即丢，不排队。不上报电量。
+- `wristband/`：环境 `wristband_sim`（固件内模拟 100 Hz IMU，用于先打通链路）和 `wristband`（真实 IMU，按亚博协议实现，已编译未上板）。发送失败即丢，不排队。不上报电量。
 - `receiver/`：收包 → 校验/去重 → 加接收时间 → 每包一行 JSON；1 Hz 状态上报；接收电脑的 LED 指令；可选按钮只上报；电脑超时则 LED 故障闪烁。
 - IMU 接 D7/D6、115200；接收板引脚仍待填。ESP-NOW 信道暂定 1，手环暂发广播地址。
 
@@ -89,7 +93,7 @@ SwiftUI：状态页、事件历史与详情、设置页（手填或 `tech12000:/
 
 ## 6. 没做的事
 
-- 三个厂家驱动都已按资料实现，均未接实物验证；手环固件未编译。
+- 三个厂家驱动都已按资料实现，均未接实物验证；固件只编译过，未上板。
 - 真实硬件上的任何验证：固件未上板，串口链路未实测。
 - 阈值标定、误报/漏报/提前量评估、端到端延迟测量。
 - APNs 发送（第二阶段）。
@@ -111,10 +115,9 @@ SwiftUI：状态页、事件历史与详情、设置页（手填或 `tech12000:/
 三个驱动的依据、未确认事项和实物验证步骤都在 `docs/open_items.md`。
 
 ### 在 Windows 上
-1. 装 VS Code + PlatformIO IDE 插件。
-2. 分别编译 `firmware/receiver`（`pio run`）、`firmware/wristband`（`pio run -e wristband_sim` 和 `pio run -e wristband`）。
-   这几个工程此前**从未在真实工具链上编译过**，有报错就修，修完提交推送。
-3. 烧 `receiver` 和 `wristband_sim`，串口监视器 115200 看输出；记下接收板打印的 MAC。
+1. ~~装 VS Code + PlatformIO IDE 插件。~~ 已完成（2026-11-16）。
+2. ~~分别编译 `firmware/receiver`、`firmware/wristband` 的两个环境。~~ 已完成，三个都通过。
+3. 烧 `receiver` 和 `wristband_sim`，串口监视器看输出（接收板 921600，见 `receiver/src/board_config.h` 的 `SERIAL_BAUD`；手环 115200）；记下接收板打印的 MAC。
 4. 给 RS6240 烧 `Tracking_uart_mrs6240_p2512.img`（步骤见 `docs/open_items.md` RS6240 一节）。
 
 ### 回到 Mac 上
