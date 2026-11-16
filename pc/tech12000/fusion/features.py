@@ -66,6 +66,8 @@ class RadarFeatures:
         self.height_drop: Optional[float] = None
         self.in_zone: Optional[bool] = None
         self.has_height = False    # 固件是否实际给出了目标高度
+        self.n_points: Optional[int] = None
+        self.points_unusable: Optional[str] = None   # 有点云但无法估计高度的原因
 
     def reset(self) -> None:
         self._buf.clear()
@@ -82,15 +84,37 @@ class RadarFeatures:
 
     def update(self, f: RadarFrame) -> None:
         t = f.t_est if f.t_est is not None else f.t_pc
+        targets = f.targets
+        if not targets and f.points is not None:
+            self.n_points = len(f.points)
+            pt = self.target_from_points(f.points)
+            targets = [pt] if pt is not None else []
         # 第一版单人监测：取区域内第一个带高度的目标
-        tg = next((x for x in f.targets if x.z is not None and self._in_zone(x)), None)
-        self.in_zone = tg is not None if f.targets else None
+        tg = next((x for x in targets if x.z is not None and self._in_zone(x)), None)
+        self.in_zone = tg is not None if targets else None
         if tg is None:
             self.height = None
             return
         self.has_height = True
         self.height = tg.z
         self._buf.append((t, tg.z))
+
+    def target_from_points(self, points) -> Optional[RadarTarget]:
+        """点云 -> 一个"等效目标"：x/y 取中位数，高度取分位数。规则是未经验证的基线。"""
+        pc = self.cfg.points
+        if pc.height_axis is None:
+            self.points_unusable = "未配置 fusion.radar.points.height_axis（竖直轴待安装后确认）"
+            return None
+        self.points_unusable = None
+        pts = [p for p in points if pc.min_snr_db is None or p[4] >= pc.min_snr_db]
+        if len(pts) < pc.min_points:
+            return None
+        ax = "xyz".index(pc.height_axis)
+        hs = sorted(pc.height_offset_m + pc.height_sign * p[ax] for p in pts)
+        h = hs[min(len(hs) - 1, int(pc.percentile * (len(hs) - 1) + 0.5))]
+        xs, ys = sorted(p[0] for p in pts), sorted(p[1] for p in pts)
+        mid = len(pts) // 2
+        return RadarTarget(x=xs[mid], y=ys[mid], z=h)
 
     def _trim(self, now: float) -> None:
         lim = now - self.cfg.window_s

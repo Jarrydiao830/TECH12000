@@ -60,11 +60,22 @@ class ZoneCfg(_M):
     y: Optional[tuple[float, float]] = None
 
 
+class RadarPointsCfg(_M):
+    """从点云估计"目标高度"的基线做法（固件不给跟踪目标时使用）。全部为占位值，未标定。"""
+    height_axis: Optional[Literal["x", "y", "z"]] = None   # 雷达坐标系里哪根轴是竖直方向；null = 不估计高度
+    height_sign: Literal[1, -1] = 1                        # 该轴正方向朝上为 1，朝下为 -1
+    height_offset_m: float = 0.0                           # 雷达安装高度：高度 = offset + sign * 轴坐标
+    min_points: int = 3                                    # 一帧至少这么多点才估计
+    percentile: float = 0.9                                # 取高度分位数（抗离群点）
+    min_snr_db: Optional[float] = None
+
+
 class RadarRuleCfg(_M):
     window_s: float = 1.0
     height_drop_m: float = 0.5
     min_track_frames: int = 5
     zone: Optional[ZoneCfg] = None
+    points: RadarPointsCfg = RadarPointsCfg()
 
 
 class FusionCfg(_M):

@@ -92,5 +92,6 @@ class FusionStateMachine:
             "wrist": {"accel_mag": r(self.wrist.accel_mag), "gyro_mag": r(self.wrist.gyro_mag),
                       "jerk": r(self.wrist.jerk)},
             "radar": {"height": r(self.radar.height), "height_drop": r(self.radar.height_drop),
-                      "in_zone": self.radar.in_zone, "has_height": self.radar.has_height},
+                      "in_zone": self.radar.in_zone, "has_height": self.radar.has_height,
+                      "n_points": self.radar.n_points, "points_unusable": self.radar.points_unusable},
         }

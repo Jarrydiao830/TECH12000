@@ -11,6 +11,8 @@ bool imu_begin() {
   return true;
 }
 
+void imu_debug_print() {}
+
 bool imu_poll(ImuReading &out) {
   uint64_t now = esp_timer_get_time();
   if (now < next_us) return false;

@@ -15,13 +15,13 @@
 - 电脑：macOS 27.0.1。
 - 第一版单手环、单人；其余板子为备用。
 
-## 3. 厂家资料现状（全部未拿到协议）
+## 3. 厂家资料现状
 
 | 资料 | 来源 | 状态 |
 |---|---|---|
-| 亚博 IMU 教程 | https://www.yahboom.com/study/IMU_Sensor （提取码 ibhe） | 需在浏览器里手动下载 |
-| Hiwonder 控制器 | https://pan.baidu.com/s/1JmjeTW04JW6pkZnwtzMNyg （提取码 nfc5） | 需登录百度网盘下载 |
-| RS6240 | https://www.possumic.com/rs6240-aip-dev-box.html | 需注册登录；SDK 可能要联系商务开权限 |
+| 亚博 IMU 教程 | https://www.yahboom.com/study/IMU_Sensor （提取码 ibhe） | 已拿到，关键文件在 `docs/vendor/yahboom-imu/` |
+| Hiwonder 控制器 | https://pan.baidu.com/s/1JmjeTW04JW6pkZnwtzMNyg （提取码 nfc5） | 已拿到，关键文件在 `docs/vendor/hiwonder/` |
+| RS6240 | https://www.possumic.com/rs6240-aip-dev-box.html | 已拿到 SDK V2.1.2，关键文件在 `docs/vendor/rs6240/` |
 
 RS6240 页面列出的文件：模组规格书 V1.0、开发板使用手册 V1.3、`RS6x_7x_mmWave_sdk.7z` V2.1.2、`cdk-windows.zip`（IDE，仅 Windows）、`USB Serial Driver.zip`（"驱动有两个，均需安装"）。页面写的采数接口为 UART/SPI/I2C。
 
@@ -42,7 +42,7 @@ RS6240 页面列出的文件：模组规格书 V1.0、开发板使用手册 V1.3
 
 ## 5. 已完成的内容（仓库 github.com/Jarrydiao830/TECH12000，main 分支）
 
-### 电脑端 Python（`pc/tech12000/`）— 可运行，23 项测试通过
+### 电脑端 Python（`pc/tech12000/`）— 可运行，52 项测试通过（Python 3.10+，Mac 上用 3.14）
 
 | 文件 | 作用 |
 |---|---|
@@ -58,24 +58,26 @@ RS6240 页面列出的文件：模组规格书 V1.0、开发板使用手册 V1.3
 | `recorder.py` / `replay.py` | JSONL 会话日志（独立写盘线程）；离线回放 |
 | `sources/sim.py` | 模拟手环与雷达，剧本：静止/跌倒/挥手/慢蹲 |
 | `sources/wristband_serial.py` | 读固定端串口（自定义 JSON 行协议），自动重连 |
-| `sources/radar_rs6240.py` | **占位**，无任何帧解析 |
-| `actuators/servo_hiwonder.py` | **占位**，无任何帧格式 |
+| `sources/radar_rs6240.py` + `rs6240_hif.py` | 按厂家源码实现 HIF/0xC3 点云解析（只监听），需先烧 UART 固件，未接实物 |
+| `actuators/servo_hiwonder.py` | 按官方 LSC 协议实现（9600 串口、电压查询作在线检测、移动指令无应答），未接实物 |
 | `actuators/base.py` | 舵机/LED 接口、模拟实现、经接收板的 LED |
 | `server/operator.py` + `static/index.html` | 本机监控台，仅 127.0.0.1，含使能/复位/曲线/配对二维码 |
 | `server/mobile.py` | 手机只读接口：HTTP + WebSocket，Bearer 令牌 |
 | `apns.py` | **占位**，只登记 token |
-| `main.py` | `tech12000 run / replay / ports` |
+| `main.py` | `tech12000 run / replay / ports / radar-probe / imu-probe` |
+| `sources/yb_imu.py` | 亚博 IMU 协议的电脑端解析，只给 `imu-probe` 直连排查用 |
 
 状态机基线规则：手环候选（窗口内出现冲击或失重，且角速度超阈值）与雷达候选（窗口内高度下降超阈值）在 `coincidence_s` 内吻合才触发；任一候选只到 Suspected，超时回 Ready。**所有阈值是占位值，规则未经真实数据验证。**
 
 进入 ARMED 的条件：状态 Ready + 舵机驱动就绪 + 通道/释放位置/动作时间已配置 + 本机界面输入 `ARM` 确认。
 
-### 固件（`firmware/`，PlatformIO + Arduino）— 编译通过，未上板
+### 固件（`firmware/`，PlatformIO + Arduino）— 未在真实工具链上编译，未上板
 
 - `common/protocol.h`：ESP-NOW 定长包（magic、version、flags、device_id、session_id、seq、t_mcu_us、t_imu_us、accel[3] m/s²、gyro[3] °/s、crc16）。
-- `wristband/`：环境 `wristband_sim`（固件内模拟 100 Hz IMU，用于先打通链路）和 `wristband`（真实 IMU，`imu_yahboom.cpp` 未实现，故意 `#error`）。发送失败即丢，不排队。不上报电量。
+- `wristband/src/yb_imu_protocol.h`：亚博 IMU 协议解析（纯 C++），`firmware/test/test_yb_imu_protocol.cpp` 可在电脑上单独编译测试。
+- `wristband/`：环境 `wristband_sim`（固件内模拟 100 Hz IMU，用于先打通链路）和 `wristband`（真实 IMU，按亚博协议实现，未编译未上板）。发送失败即丢，不排队。不上报电量。
 - `receiver/`：收包 → 校验/去重 → 加接收时间 → 每包一行 JSON；1 Hz 状态上报；接收电脑的 LED 指令；可选按钮只上报；电脑超时则 LED 故障闪烁。
-- 引脚、IMU 波特率全部留空待填。ESP-NOW 信道暂定 1，手环暂发广播地址。
+- IMU 接 D7/D6、115200；接收板引脚仍待填。ESP-NOW 信道暂定 1，手环暂发广播地址。
 
 ### iOS（`ios/`）— 只有源码，未经 Xcode 编译
 
@@ -87,7 +89,7 @@ SwiftUI：状态页、事件历史与详情、设置页（手填或 `tech12000:/
 
 ## 6. 没做的事
 
-- 三个厂家驱动：IMU 解析、RS6240、Hiwonder。
+- 三个厂家驱动都已按资料实现，均未接实物验证；手环固件未编译。
 - 真实硬件上的任何验证：固件未上板，串口链路未实测。
 - 阈值标定、误报/漏报/提前量评估、端到端延迟测量。
 - APNs 发送（第二阶段）。
@@ -101,13 +103,25 @@ SwiftUI：状态页、事件历史与详情、设置页（手填或 `tech12000:/
 - 接收板与电脑之间用 JSON 行协议，便于直接用串口监视器调试。
 - 固件提供模拟 IMU 构建，在拿到 IMU 协议前就能验证无线链路。
 
-## 8. 建议的下一步（按原实施顺序）
+## 8. 下一步（2026-11-16 更新）
 
-1. 下载三份厂家资料放进 `docs/vendor/`。
-2. 读 IMU 文档 → 实现 `imu_yahboom.cpp`，填 `board_config.h`。
-3. 烧 `receiver` 和 `wristband_sim`，电脑端切到 `driver: serial`，打通链路并测丢包与延迟。
-4. 读 RS6240 手册与 SDK，确认 Mac 上能否读数据、输出哪些字段。
-5. 读 Hiwonder 手册，拆开释放机构，小角度空载测试。
-6. 录真实动作数据，用回放标定阈值。
+**使用者不熟悉编程和硬件，请一步一步带着做：每次只给一步，说明在哪里点、输入什么、看到什么算成功，等对方回复结果再继续。**
+
+厂家资料原始包（`servo/`、`imu/`、`radar/`）在 Mac 上，被 `.gitignore` 排除，不在仓库里。
+三个驱动的依据、未确认事项和实物验证步骤都在 `docs/open_items.md`。
+
+### 在 Windows 上
+1. 装 VS Code + PlatformIO IDE 插件。
+2. 分别编译 `firmware/receiver`（`pio run`）、`firmware/wristband`（`pio run -e wristband_sim` 和 `pio run -e wristband`）。
+   这几个工程此前**从未在真实工具链上编译过**，有报错就修，修完提交推送。
+3. 烧 `receiver` 和 `wristband_sim`，串口监视器 115200 看输出；记下接收板打印的 MAC。
+4. 给 RS6240 烧 `Tracking_uart_mrs6240_p2512.img`（步骤见 `docs/open_items.md` RS6240 一节）。
+
+### 回到 Mac 上
+5. IMU 模块 USB 直连：`tech12000 imu-probe --port ... --rate 100`，静止时 |a| ≈ 9.8、约 100 Hz。
+6. 量 IMU TX 电平 ≤ 3.3 V 后按 D7/D6 接 XIAO，烧 `wristband`，电脑端 `sources.wristband.driver: serial`，打通链路，测丢包与延迟。
+7. 雷达：`tech12000 radar-probe --port ...`，确认能收到点云；站/蹲/躺定竖直轴，填 `fusion.radar.points`。
+8. Hiwonder：插 Mac 看串口、电压应答；释放机构小角度空载测试。
+9. 录真实动作数据，用回放标定阈值。
 
 提醒：从第一天起逐段测端到端延迟；建议在舵机电源上加物理开关作为联锁，软件使能不应是唯一屏障。

@@ -12,3 +12,5 @@ struct ImuReading {
 bool imu_begin();
 // 非阻塞。解析出一帧完整数据返回 true。
 bool imu_poll(ImuReading &out);
+// 串口打印解析统计（帧数、校验错误等），模拟构建为空操作。
+void imu_debug_print();

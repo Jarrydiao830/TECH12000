@@ -9,7 +9,10 @@
 #define RECEIVER_MAC {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 
 // ---- IMU UART（IMU_SIM 构建不需要）----
-// IMU TX -> XIAO RX，IMU RX -> XIAO TX。供电电压与串口电平按模块文档确认。
-// #define IMU_RX_PIN  ?    // XIAO 上接 IMU TX 的 GPIO 编号
-// #define IMU_TX_PIN  ?    // XIAO 上接 IMU RX 的 GPIO 编号
-// #define IMU_BAUD    ?    // 模块文档给出的波特率
+// 接线（本项目的选择，按此接线即可；要换引脚改这里）：
+//   IMU TX -> XIAO D7（板上丝印 RX）    IMU RX -> XIAO D6（板上丝印 TX）
+//   IMU GND -> XIAO GND                IMU 供电见 docs/open_items.md（XIAO 的 IO 只能接 3.3 V 电平）
+#define IMU_RX_PIN  D7       // XIAO 上接 IMU TX 的引脚
+#define IMU_TX_PIN  D6       // XIAO 上接 IMU RX 的引脚
+#define IMU_BAUD    115200   // 《IMU模块介绍》基础参数：串口波特率 115200bps
+#define IMU_RATE_HZ 100      // 协议允许 10~100 Hz，默认 25 Hz；开机后由固件下发

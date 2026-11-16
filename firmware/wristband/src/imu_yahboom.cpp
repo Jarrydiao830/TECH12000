@@ -1,19 +1,65 @@
-// 亚博六轴 IMU 串口驱动 —— 未实现，等待该模块的准确型号与官方协议文档。
-// 故意不写任何帧格式。实现时需要从文档确认：
-//   1. 波特率、帧头、帧长、校验方式；输出频率如何配置（目标约100 Hz）。
-//   2. 加速度/角速度的原始量纲与量程 -> 换算成 m/s^2 和 deg/s。
-//   3. 帧内是否带时间戳（决定 has_imu_time）。
-//   4. 供电电压和 TX/RX 电平是否与 XIAO 的 3.3 V IO 直接兼容。
-//   5. 只使用加速度计 + 陀螺仪；姿态角/四元数仅在模块确实输出时再加。
+// 亚博六轴 IMU 串口驱动（协议解析见 yb_imu_protocol.h）。
+//   - 模块串口 115200 bps，默认 25 Hz 输出；上电后约 5 s 才就绪（模块介绍：启动时间 5000 ms）。
+//   - 设置频率命令没有应答，所以开机后的前 IMU_RATE_RETRY_MS 内每秒重发一次，之后不再发。
+//   - 帧内无时间戳：has_imu_time = false，时间以 XIAO 收齐该帧的时刻为准。
+//   - 只用加速度和角速度（六轴）；磁力计、四元数、欧拉角帧解析后丢弃。
 #ifndef IMU_SIM
+#include <Arduino.h>
+#include "esp_timer.h"
 #include "board_config.h"
 #include "imu_driver.h"
+#include "yb_imu_protocol.h"
 
-#if !defined(IMU_RX_PIN) || !defined(IMU_TX_PIN) || !defined(IMU_BAUD)
-#error "请先在 board_config.h 中按实物和文档填写 IMU_RX_PIN / IMU_TX_PIN / IMU_BAUD"
+#if !defined(IMU_RX_PIN) || !defined(IMU_TX_PIN) || !defined(IMU_BAUD) || !defined(IMU_RATE_HZ)
+#error "请在 board_config.h 中填写 IMU_RX_PIN / IMU_TX_PIN / IMU_BAUD / IMU_RATE_HZ"
 #endif
-#error "imu_yahboom.cpp 尚未实现：需要亚博六轴 IMU 的官方协议文档。链路联调请用 wristband_sim 环境。"
 
-bool imu_begin() { return false; }
-bool imu_poll(ImuReading &) { return false; }
+#ifndef IMU_RATE_RETRY_MS
+#define IMU_RATE_RETRY_MS 10000
+#endif
+
+static HardwareSerial &ImuSerial = Serial1;
+static ybimu::Parser g_parser;
+static uint32_t g_begin_ms = 0, g_last_rate_ms = 0;
+
+static void send_set_rate() {
+  uint8_t cmd[8];
+  size_t n = ybimu::build_set_rate(IMU_RATE_HZ, cmd);
+  if (n) ImuSerial.write(cmd, n);
+}
+
+bool imu_begin() {
+  ImuSerial.begin(IMU_BAUD, SERIAL_8N1, IMU_RX_PIN, IMU_TX_PIN);
+  g_begin_ms = millis();
+  g_last_rate_ms = 0;
+  return true;
+}
+
+bool imu_poll(ImuReading &out) {
+  uint32_t now_ms = millis();
+  if (now_ms - g_begin_ms < IMU_RATE_RETRY_MS && now_ms - g_last_rate_ms >= 1000) {
+    g_last_rate_ms = now_ms;
+    send_set_rate();
+  }
+  ybimu::Raw raw;
+  while (ImuSerial.available() > 0) {
+    if (g_parser.push((uint8_t)ImuSerial.read(), raw)) {
+      for (int i = 0; i < 3; i++) {
+        out.accel[i] = raw.accel_ms2[i];
+        out.gyro[i] = raw.gyro_dps[i];
+      }
+      out.has_imu_time = false;
+      out.imu_time_us = 0;
+      out.t_rx_us = esp_timer_get_time();
+      return true;   // 一次返回一帧；主循环会继续调用直到读空
+    }
+  }
+  return false;
+}
+
+void imu_debug_print() {
+  Serial.printf("imu frames=%lu csum_err=%lu other=%lu resync=%lu\n", (unsigned long)g_parser.frames,
+                (unsigned long)g_parser.checksum_errors, (unsigned long)g_parser.other_frames,
+                (unsigned long)g_parser.resyncs);
+}
 #endif

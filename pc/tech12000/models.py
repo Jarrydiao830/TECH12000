@@ -80,8 +80,11 @@ class RadarFrame:
     t_pc: float
     t_wall: float
     targets: list[RadarTarget] = field(default_factory=list)
-    points: Optional[list[tuple[float, float, float]]] = None  # 点云，固件支持时才有
+    # 点云 (x_m, y_m, z_m, v_mps, snr_db)，雷达坐标系；固件支持且为笛卡尔坐标时才有
+    points: Optional[list[tuple[float, float, float, float, float]]] = None
     t_device_us: Optional[int] = None
+    device_frame: Optional[int] = None    # 雷达自带帧序号（RS6240 0xC3 frameIdx）
+    cloud_kind: Optional[str] = None      # motion / presence
     simulated: bool = False
     t_est: Optional[float] = None
 

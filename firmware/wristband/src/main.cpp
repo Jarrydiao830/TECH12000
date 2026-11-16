@@ -60,5 +60,11 @@ void loop() {
     if (esp_now_send(kPeer, (const uint8_t *)&p, sizeof(p)) != ESP_OK) g_send_fail++;
   }
   // 注意：本硬件没有电池测量线路，因此不上报电量。
+  static uint32_t last_dbg = 0;
+  if (millis() - last_dbg >= 5000) {
+    last_dbg = millis();
+    imu_debug_print();
+    Serial.printf("seq=%lu send_fail=%lu\n", (unsigned long)g_seq, (unsigned long)g_send_fail);
+  }
   delay(1);
 }

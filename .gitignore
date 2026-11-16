@@ -16,3 +16,8 @@ ios/*.xcodeproj/
 ios/build/
 DerivedData/
 .DS_Store
+
+# 厂家原始资料包（视频/安装包，体积大）；需要的部分已复制到 docs/vendor/
+servo/
+imu/
+radar/

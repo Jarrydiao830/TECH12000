@@ -18,17 +18,18 @@ sources:
     baud: 921600        # 仅对UART桥有意义；原生USB CDC会忽略
     stale_timeout_s: 0.5
   radar:
-    driver: sim
-    port: null
+    driver: sim         # sim | rs6240（HIF 走 UART 的固件，见 docs/open_items.md）| none
+    port: null          # RS6240 开发板的 CH347T 串口，以实际枚举为准
+    baud: 1000000       # 厂家 ESP32 主机示例的 UART 预设，以实测为准
     stale_timeout_s: 1.0
   # 判为 Ready 所必需的数据源；缺任何一个 -> Fault
   required: [wristband, radar]
 
 actuators:
   servo:
-    driver: sim         # sim | hiwonder（待官方协议文档到位后实现）| none
-    port: null
-    channel: null       # 控制器通道号，接线确定后填写
+    driver: sim         # sim | hiwonder（幻尔 LSC 协议，9600 串口）| none
+    port: null          # Hiwonder 的 USB 串口，例如 /dev/cu.usbserial-XXXX，以实际枚举为准
+    channel: null       # 控制器通道号（丝印 0–15）。建议用 1–3：通道 0 与厂家示例不一致，0–3 带过流保护
     # X70S 包装标注的脉宽范围，作为硬限幅
     pulse_min_us: 500
     pulse_max_us: 2500
@@ -55,6 +56,14 @@ fusion:
     min_track_frames: 5
     # 监测/保护区域（雷达坐标系，单位m）；null 表示不限制。坐标定义待SDK文档确认
     zone: null                # 例如 {x: [-1.0, 1.0], y: [0.3, 2.5]}
+    # 固件只给点云时，从点云估计"目标高度"（基线规则，占位值，未标定）
+    points:
+      height_axis: null       # 雷达坐标系的竖直轴 x|y|z，安装后用 radar-probe 实测确定
+      height_sign: 1          # 该轴正方向朝上为 1，朝下为 -1
+      height_offset_m: 0.0    # 雷达安装高度（m）
+      min_points: 3
+      percentile: 0.9
+      min_snr_db: null
 
 server:
   # 操作员界面：只监听本机回环地址，含使能/复位等控制
