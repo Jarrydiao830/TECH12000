@@ -54,7 +54,7 @@ ONLINE_TIMEOUT_S = 3.0                    # 超过这么久没收到电压应答
 def _frame(cmd: int, params: bytes = b"") -> bytes:
     length = len(params) + 2
     if length > 0xFF:
-        raise ValueError("帧过长")
+        raise ValueError("Frame too long")
     return HEADER + bytes((length, cmd)) + params
 
 
@@ -62,15 +62,15 @@ def build_servo_move(targets: Iterable[tuple[int, int]], time_ms: int) -> bytes:
     """CMD_SERVO_MOVE。targets = [(通道, 位置)]。超范围直接报错，不做限幅。"""
     targets = list(targets)
     if not targets:
-        raise ValueError("至少需要一个舵机")
+        raise ValueError("At least one servo required")
     if not TIME_MIN_MS <= time_ms <= TIME_MAX_MS:
-        raise ValueError(f"time_ms={time_ms} 超出 [{TIME_MIN_MS},{TIME_MAX_MS}]")
+        raise ValueError(f"time_ms={time_ms} out of range [{TIME_MIN_MS},{TIME_MAX_MS}]")
     params = bytearray((len(targets),)) + int(time_ms).to_bytes(2, "little")
     for ch, pulse in targets:
         if not CHANNEL_MIN <= ch <= CHANNEL_MAX:
-            raise ValueError(f"通道 {ch} 超出 [{CHANNEL_MIN},{CHANNEL_MAX}]")
+            raise ValueError(f"Channel {ch} out of range [{CHANNEL_MIN},{CHANNEL_MAX}]")
         if not PULSE_MIN <= pulse <= PULSE_MAX:
-            raise ValueError(f"位置 {pulse} 超出 [{PULSE_MIN},{PULSE_MAX}]")
+            raise ValueError(f"Position {pulse} out of range [{PULSE_MIN},{PULSE_MAX}]")
         params += bytes((ch,)) + int(pulse).to_bytes(2, "little")
     return _frame(CMD_SERVO_MOVE, bytes(params))
 
@@ -138,7 +138,7 @@ class HiwonderServo(ServoDriver):
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._parser = FrameParser()
-        self._conn_detail = "未启动"
+        self._conn_detail = "Not started"
         self.voltage_mv: Optional[int] = None
         self.last_voltage_t: Optional[float] = None
         self.last_unsolicited: Optional[dict] = None
@@ -175,19 +175,19 @@ class HiwonderServo(ServoDriver):
     def _run(self) -> None:
         while not self._stop.is_set():
             if not self.port:
-                self._conn_detail = "未配置 actuators.servo.port"
+                self._conn_detail = "actuators.servo.port not configured"
                 self._stop.wait(2)
                 continue
             try:
                 ser = self._serial_factory(self.port)
             except Exception as e:
-                self._conn_detail = f"打不开串口: {e}"
+                self._conn_detail = f"Cannot open serial port: {e}"
                 self._stop.wait(1)
                 continue
             self._ser = ser
             self._parser = FrameParser()
-            self._conn_detail = f"已打开 {self.port}，等待电压应答"
-            log.info("Hiwonder 串口已打开 %s（不发送任何位置指令）", self.port)
+            self._conn_detail = f"Opened {self.port}, waiting for voltage reply"
+            log.info("Hiwonder serial port opened %s (no position commands sent)", self.port)
             next_poll = 0.0
             try:
                 while not self._stop.is_set():
@@ -199,8 +199,8 @@ class HiwonderServo(ServoDriver):
                     if data:
                         self.handle_bytes(data)
             except Exception as e:
-                self._conn_detail = f"串口断开: {e}"
-                log.warning("Hiwonder 串口断开: %s", e)
+                self._conn_detail = f"Serial port disconnected: {e}"
+                log.warning("Hiwonder serial port disconnected: %s", e)
             finally:
                 self._drop_serial()
                 self.last_voltage_t = None
@@ -210,7 +210,7 @@ class HiwonderServo(ServoDriver):
     def _write(self, frame: bytes) -> None:
         ser = self._ser
         if ser is None:
-            raise RuntimeError("舵机控制器串口未连接")
+            raise RuntimeError("Servo controller serial port not connected")
         with self._wlock:
             ser.write(frame)
             ser.flush()          # 等字节真正发出，再算"已发送"
@@ -227,7 +227,7 @@ class HiwonderServo(ServoDriver):
                     info["group"] = p[0]
                     info["times"] = int.from_bytes(p[1:3], "little")
                 self.last_unsolicited = info
-                log.warning("控制器主动上报（动作组）: %s", info)
+                log.warning("Controller sent unsolicited report (action group): %s", info)
 
     # ---- ServoDriver 接口
     @property
@@ -242,18 +242,18 @@ class HiwonderServo(ServoDriver):
     @property
     def detail(self) -> str:
         if self.online:
-            return f"在线（电压应答 {self.voltage_mv} mV）；移动指令无应答，只能确认已发送"
+            return f"Online (voltage reply {self.voltage_mv} mV); move commands have no reply, so only 'sent' can be confirmed"
         if self._ser is not None and self.last_voltage_t is not None:
-            return f"{ONLINE_TIMEOUT_S:.0f} 秒内没有电压应答（控制器开关/供电？）"
+            return f"{ONLINE_TIMEOUT_S:.0f} s with no voltage reply (controller switch / power?)"
         return self._conn_detail
 
     def move(self, channel: int, pulse_us: int, time_ms: int) -> Optional[bool]:
         frame = build_servo_move([(channel, pulse_us)], time_ms)   # 先校验，超范围直接抛
         if not self.online:
-            raise RuntimeError(f"舵机控制器未就绪：{self.detail}")
+            raise RuntimeError(f"Servo controller not ready: {self.detail}")
         self._write(frame)
         self.moves_sent += 1
-        log.info("[Hiwonder] ch=%s pulse=%s time=%sms 已发送 %s", channel, pulse_us, time_ms, frame.hex(" "))
+        log.info("[Hiwonder] ch=%s pulse=%s time=%sms sent %s", channel, pulse_us, time_ms, frame.hex(" "))
         return None          # 协议无确认
 
     def status(self) -> dict:

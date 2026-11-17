@@ -47,7 +47,7 @@ def build(cfg: Config):
         receiver_send = sw.send_command
         engine.status_providers["receiver"] = sw.board_status
     elif w.driver != "none":
-        raise ValueError(f"未知手环驱动 {w.driver}")
+        raise ValueError(f"Unknown wristband driver {w.driver}")
 
     r = cfg.sources.radar
     if r.driver == "sim":
@@ -58,7 +58,7 @@ def build(cfg: Config):
         sources.append(rr)
         engine.status_providers["radar_hif"] = rr.status
     elif r.driver != "none":
-        raise ValueError(f"未知雷达驱动 {r.driver}")
+        raise ValueError(f"Unknown radar driver {r.driver}")
 
     if "sim" in (w.driver, r.driver):
         sim_inject = lambda kind: scenario.inject(kind, time.monotonic())
@@ -131,9 +131,9 @@ async def run_async(cfg: Config) -> None:
             await asyncio.sleep(0.02)
 
     tasks = [asyncio.create_task(src.run()) for src in sources] + [asyncio.create_task(ticker())]
-    log.info("操作员界面: http://%s:%d", s.operator_host, s.operator_port)
-    log.info("手机接口:   http://%s:%d  （配对信息见操作员界面）", pairing.lan_ip(), s.mobile_port)
-    log.info("日志目录:   %s", rec.dir)
+    log.info("Operator UI: http://%s:%d", s.operator_host, s.operator_port)
+    log.info("Phone API:   http://%s:%d  (pairing info is on the operator UI)", pairing.lan_ip(), s.mobile_port)
+    log.info("Log folder:  %s", rec.dir)
     try:
         await asyncio.gather(*(sv.serve() for sv in servers))
     finally:
@@ -161,10 +161,10 @@ def imu_probe(args) -> None:
                     print("accel m/s² " + " ".join(f"{x:+7.2f}" for x in a)
                           + "   gyro °/s " + " ".join(f"{x:+8.1f}" for x in g))
         dt = time.monotonic() - t0
-    print(f"\n{n} 帧原始数据，约 {n / dt:.1f} Hz；统计 {p.stats}")
+    print(f"\n{n} raw frames, about {n / dt:.1f} Hz; stats {p.stats}")
     if last:
         import math
-        print(f"最后一帧 |a| = {math.sqrt(sum(x * x for x in last[0])):.2f} m/s²（静止应接近 9.8）")
+        print(f"Last frame |a| = {math.sqrt(sum(x * x for x in last[0])):.2f} m/s² (should be close to 9.8 when still)")
 
 
 def radar_probe(args) -> None:
@@ -191,18 +191,18 @@ def radar_probe(args) -> None:
         import serial
         with serial.Serial(args.port, args.baud, timeout=0.1) as ser:
             end = time.monotonic() + args.seconds
-            print(f"监听 {args.port} @ {args.baud}，{args.seconds:.0f} 秒（不发送任何数据）...")
+            print(f"Listening on {args.port} @ {args.baud} for {args.seconds:.0f} s (sending nothing)...")
             while time.monotonic() < end:
                 d = ser.read(4096)
                 if d:
                     handle(d)
     if args.save:
         open(args.save, "wb").write(raw)
-    print(f"\n收到 {len(raw)} 字节")
+    print(f"\nReceived {len(raw)} bytes")
     print(json.dumps(dec.stats(), ensure_ascii=False, indent=2))
     if raw and not dec.parser.stats["frames"]:
-        print("没有解析出 HIF 帧。前 64 字节：", raw[:64].hex(" "))
-        print("可能原因：波特率不对 / 这个口是调试日志口 / 固件需要主机先轮询 / HIF 走的是 SPI")
+        print("No HIF frames parsed. First 64 bytes:", raw[:64].hex(" "))
+        print("Possible causes: wrong baud rate / this is the debug log port / firmware needs the host to poll first / HIF is on SPI")
 
 
 def main() -> None:
@@ -214,17 +214,17 @@ def main() -> None:
     rp.add_argument("session_dir")
     rp.add_argument("--mode", default="monitor", choices=["monitor", "demo"])
     sub.add_parser("ports")
-    pp = sub.add_parser("radar-probe", help="读 RS6240 串口或抓包文件，统计 HIF 帧与点云（只读，不发命令）")
+    pp = sub.add_parser("radar-probe", help="Read an RS6240 serial port or capture file and count HIF frames and point clouds (read-only, sends no commands)")
     src = pp.add_mutually_exclusive_group(required=True)
     src.add_argument("--port")
-    src.add_argument("--file", help="之前用 --save 保存的原始字节")
+    src.add_argument("--file", help="Raw bytes saved earlier with --save")
     pp.add_argument("--baud", type=int, default=1_000_000)
     pp.add_argument("--seconds", type=float, default=10.0)
-    pp.add_argument("--save", help="把收到的原始字节另存到此文件")
-    ip = sub.add_parser("imu-probe", help="用 USB 直连亚博 IMU 模块，读原始加速度/角速度（排查用）")
+    pp.add_argument("--save", help="Save the received raw bytes to this file")
+    ip = sub.add_parser("imu-probe", help="Read raw accel/gyro from a Yahboom IMU over direct USB (for troubleshooting)")
     ip.add_argument("--port", required=True)
     ip.add_argument("--seconds", type=float, default=5.0)
-    ip.add_argument("--rate", type=int, help="先下发输出频率 10~100 Hz（无应答）")
+    ip.add_argument("--rate", type=int, help="First set the output rate, 10-100 Hz (no reply)")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 

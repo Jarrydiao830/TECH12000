@@ -51,7 +51,7 @@ class SimServo(ServoDriver):
 
     @property
     def detail(self) -> str:
-        return "模拟舵机，不驱动任何硬件"
+        return "Simulated servo, drives no hardware"
 
     def move(self, channel: int, pulse_us: int, time_ms: int) -> Optional[bool]:
         self.moves.append((time.time(), channel, pulse_us, time_ms))
@@ -64,7 +64,7 @@ class NoServo(ServoDriver):
 
     @property
     def detail(self) -> str:
-        return "未配置舵机控制器"
+        return "No servo controller configured"
 
 
 class LedDriver:
@@ -112,7 +112,7 @@ def make_servo(cfg: ServoCfg) -> ServoDriver:
         return HiwonderServo(cfg.port)
     if cfg.driver == "none":
         return NoServo()
-    raise ValueError(f"未知舵机驱动: {cfg.driver}")
+    raise ValueError(f"Unknown servo driver: {cfg.driver}")
 
 
 def make_led(cfg: LedCfg, receiver_send: Optional[Callable[[dict], bool]] = None) -> LedDriver:
@@ -120,8 +120,8 @@ def make_led(cfg: LedCfg, receiver_send: Optional[Callable[[dict], bool]] = None
         return SimLed()
     if cfg.driver == "receiver":
         if receiver_send is None:
-            raise ValueError("led.driver=receiver 需要 sources.wristband.driver=serial")
+            raise ValueError("led.driver=receiver requires sources.wristband.driver=serial")
         return ReceiverLed(receiver_send)
     if cfg.driver == "none":
         return LedDriver()
-    raise ValueError(f"未知LED驱动: {cfg.driver}")
+    raise ValueError(f"Unknown LED driver: {cfg.driver}")

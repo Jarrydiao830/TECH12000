@@ -43,13 +43,13 @@ def create_operator_app(engine: Engine, hub: Hub, get_token: Callable[[], str],
         # 纵深防御：即使被误配置成监听 0.0.0.0，也拒绝非本机来源和跨站请求
         host = request.client.host if request.client else ""
         if host not in LOOPBACK:
-            return JSONResponse({"detail": "仅限本机访问"}, status_code=403)
+            return JSONResponse({"detail": "Local access only"}, status_code=403)
         hdr_host = request.headers.get("host", "").rsplit(":", 1)[0].strip("[]")
         if hdr_host not in LOOPBACK:
-            return JSONResponse({"detail": "Host 不合法"}, status_code=403)
+            return JSONResponse({"detail": "Invalid Host"}, status_code=403)
         origin = request.headers.get("origin")
         if origin and origin.split("//")[-1].rsplit(":", 1)[0].strip("[]") not in LOOPBACK:
-            return JSONResponse({"detail": "Origin 不合法"}, status_code=403)
+            return JSONResponse({"detail": "Invalid Origin"}, status_code=403)
         return await call_next(request)
 
     @app.get("/")
@@ -84,7 +84,7 @@ def create_operator_app(engine: Engine, hub: Hub, get_token: Callable[[], str],
     @app.post("/api/sim/inject")
     def inject(body: InjectBody) -> dict:
         if sim_inject is None:
-            raise HTTPException(409, "当前不是模拟数据源")
+            raise HTTPException(409, "Data source is not simulated")
         try:
             sim_inject(body.kind)
         except ValueError as e:

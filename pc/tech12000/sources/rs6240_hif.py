@@ -77,7 +77,7 @@ def build_frame(msg_id: int, payload: bytes, *, type_: int = TYPE_DEV_TO_HOST, f
                 seq: int = 0, frag: bool = False) -> bytes:
     """按上面的线上格式组帧。用于测试和主机→设备命令。"""
     if len(payload) > 0xFFF:
-        raise ValueError("payload 超过 4095 字节")
+        raise ValueError("payload exceeds 4095 bytes")
     hdr = pack_msghdr(type_, flag, msg_id, len(payload), seq, frag)
     hdr_b = struct.pack("<I", hdr)
     c8 = (~(MAGIC + sum(hdr_b))) & 0xFF

@@ -110,7 +110,7 @@ class Engine:
             for n in stale:
                 m = self.monitors[n]
                 parts.append(f"{n}: " + (m.detail if not m.connected and m.detail else
-                                          "无数据" if m.last_rx_pc is None else "数据过期"))
+                                          "no data" if m.last_rx_pc is None else "stale data"))
             reason = "；".join(parts)
         if not self.monitoring:
             return
@@ -119,7 +119,7 @@ class Engine:
         self._update_led()
 
     def _on_transition(self, frm, to, why, now, wall) -> None:
-        log.info("状态 %s -> %s (%s)", frm.value, to.value, why)
+        log.info("State %s -> %s (%s)", frm.value, to.value, why)
         payload = {"from": frm.value, "to": to.value, "reason": why, "t_pc": now, "t_wall": wall,
                    "mode": self.mode.value}
         self.rec.write("state", payload)
@@ -145,7 +145,7 @@ class Engine:
         try:
             status = await asyncio.get_running_loop().run_in_executor(None, self.executor.execute, ev)
         except Exception as e:
-            log.exception("执行异常")
+            log.exception("Execution error")
             ev.detail["actuation_error"] = str(e)
             status = DeployStatus.SEND_FAILED
         self._finish_event(ev, status)
@@ -164,24 +164,24 @@ class Engine:
             try:
                 self.led.set_state(*key)
             except Exception:
-                log.exception("LED 指令失败")
+                log.exception("LED command failed")
 
     def _emit(self, kind: str, payload: dict) -> None:
         for fn in self.listeners:
             try:
                 fn(kind, payload)
             except Exception:
-                log.exception("listener 异常")
+                log.exception("Listener error")
 
     # ------------------------------------------------------------ 操作员控制（仅本机界面可调用）
     def set_mode(self, mode: Mode, confirm: str = "") -> tuple[bool, str]:
         if self.fsm.state is SystemState.TRIGGERED:
-            return False, "事件已锁定，请先人工检查并复位"
+            return False, "Event is latched. Check on site and reset first."
         if mode is Mode.ARMED:
             if confirm != ARM_CONFIRM:
-                return False, f"进入 ARMED 需要明确确认（confirm='{ARM_CONFIRM}'）"
+                return False, f"Entering ARMED needs explicit confirmation (confirm='{ARM_CONFIRM}')"
             if self.fsm.state is not SystemState.READY:
-                return False, "只有 Ready 状态才能使能"
+                return False, "Can only arm in the Ready state"
             ok, why = self.executor.can_arm()
             if not ok:
                 return False, why

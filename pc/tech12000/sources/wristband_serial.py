@@ -27,7 +27,7 @@ def parse_imu_line(o: dict, t_pc: float, t_wall: float) -> ImuSample:
     flags = int(o.get("f", 0))
     a, g = o["a"], o["g"]
     if len(a) != 3 or len(g) != 3:
-        raise ValueError("a/g 长度必须为3")
+        raise ValueError("a/g must have length 3")
     return ImuSample(
         device_id=str(o["dev"]), session_id=int(o["ses"]), seq=int(o["seq"]),
         accel=(float(a[0]), float(a[1]), float(a[2])),
@@ -47,7 +47,7 @@ class SerialWristband:
         self._ser = None
         self._wlock = threading.Lock()
         self._stop = threading.Event()
-        self.board: dict = {"connected": False, "detail": "未连接", "heartbeat": None,
+        self.board: dict = {"connected": False, "detail": "not connected", "heartbeat": None,
                             "last_hb_pc": None, "parse_errors": 0}
 
     async def run(self) -> None:
@@ -69,17 +69,17 @@ class SerialWristband:
 
         while not self._stop.is_set():
             if not self.cfg.port:
-                loop.call_soon_threadsafe(self._set_conn, False, "未配置 sources.wristband.port")
+                loop.call_soon_threadsafe(self._set_conn, False, "sources.wristband.port not configured")
                 time.sleep(2)
                 continue
             try:
                 ser = serial.Serial(self.cfg.port, self.cfg.baud, timeout=0.2)
             except Exception as e:
-                loop.call_soon_threadsafe(self._set_conn, False, f"打不开串口: {e}")
+                loop.call_soon_threadsafe(self._set_conn, False, f"Cannot open serial port: {e}")
                 time.sleep(1)
                 continue
             self._ser = ser
-            loop.call_soon_threadsafe(self._set_conn, True, f"已打开 {self.cfg.port}")
+            loop.call_soon_threadsafe(self._set_conn, True, f"Opened {self.cfg.port}")
             try:
                 while not self._stop.is_set():
                     line = ser.readline()
@@ -88,7 +88,7 @@ class SerialWristband:
                     t_pc, t_wall = time.monotonic(), time.time()   # 尽早打接收时间戳
                     loop.call_soon_threadsafe(self._on_line, line, t_pc, t_wall)
             except Exception as e:
-                loop.call_soon_threadsafe(self._set_conn, False, f"串口断开: {e}")
+                loop.call_soon_threadsafe(self._set_conn, False, f"Serial port disconnected: {e}")
             finally:
                 self._ser = None
                 try:

@@ -117,14 +117,14 @@ class FallEvent:
 
 def event_message(ev: FallEvent) -> str:
     """通知文案：只陈述真实发生的事，不声称气囊已展开或保护成功。"""
-    prefix = "【模拟测试】" if ev.is_test else ""
+    prefix = "[Simulated test] " if ev.is_test else ""
     s = ev.deploy_status
     if s in (DeployStatus.COMMAND_SENT, DeployStatus.CONTROLLER_ACKED):
-        body = "检测到疑似跌倒，系统已发送部署指令，请立即查看现场。"
+        body = "Possible fall detected. Deploy command sent. Check on the person now."
     elif s is DeployStatus.DEMO_SENT:
-        body = "检测到疑似跌倒，已发送演示动作指令（未连接实际释放机构）。"
+        body = "Possible fall detected. Demo command sent (no real release mechanism connected)."
     elif s is DeployStatus.SEND_FAILED:
-        body = "检测到疑似跌倒，部署指令发送失败，请立即查看现场。"
+        body = "Possible fall detected. Deploy command FAILED to send. Check on the person now."
     else:
-        body = "检测到疑似跌倒，当前为仅监测模式，未发送部署指令，请立即查看现场。"
+        body = "Possible fall detected. Monitor-only mode, no deploy command sent. Check on the person now."
     return prefix + body

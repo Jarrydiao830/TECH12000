@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>zh_CN</string>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>TECH12000</string>
 	<key>CFBundleExecutable</key>
@@ -34,7 +34,7 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>需要访问本地网络，以连接同一局域网内运行监测程序的电脑。</string>
+	<string>Used to connect to the computer running the monitoring program on your local network.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

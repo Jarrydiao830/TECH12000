@@ -25,7 +25,7 @@ class FusionStateMachine:
         self.wrist = WristFeatures(cfg.wrist)
         self.radar = RadarFeatures(cfg.radar)
         self.state = SystemState.INITIALIZING
-        self.reason = "启动"
+        self.reason = "startup"
         self._last_evidence: Optional[float] = None
         self.trigger_detail: dict = {}
 
@@ -33,7 +33,7 @@ class FusionStateMachine:
         self.wrist.reset()
         self.radar.reset()
         self.state = SystemState.INITIALIZING
-        self.reason = "复位"
+        self.reason = "reset"
         self._last_evidence = None
         self.trigger_detail = {}
 
@@ -56,13 +56,13 @@ class FusionStateMachine:
             return out   # 锁定：只有人工复位能离开
         if self.state in (S.INITIALIZING, S.FAULT):
             if settled:
-                self._set(S.READY, "数据源正常", out)
+                self._set(S.READY, "data sources OK", out)
             elif not sources_fresh and fault_reason:
                 self._set(S.FAULT, fault_reason, out)
             if self.state is not S.READY:
                 return out
         if not sources_fresh:
-            self._set(S.FAULT, fault_reason or "数据过期", out)
+            self._set(S.FAULT, fault_reason or "stale data", out)
             return out
 
         wc = self.wrist.candidate(now)
@@ -70,8 +70,8 @@ class FusionStateMachine:
         if wc is not None or rc is not None:
             self._last_evidence = now
             if self.state is S.READY:
-                which = "手环+雷达" if (wc is not None and rc is not None) else ("手环" if wc is not None else "雷达")
-                self._set(S.SUSPECTED_FALL, f"{which}出现异常特征", out)
+                which = "wristband+radar" if (wc is not None and rc is not None) else ("wristband" if wc is not None else "radar")
+                self._set(S.SUSPECTED_FALL, f"abnormal features from {which}", out)
         if self.state is S.SUSPECTED_FALL:
             if wc is not None and rc is not None and abs(wc - rc) <= self.cfg.coincidence_s:
                 self.trigger_detail = {
@@ -81,9 +81,9 @@ class FusionStateMachine:
                     "radar_candidate_t": rc,
                     "radar_height_drop_m": self.radar.height_drop,
                 }
-                self._set(S.TRIGGERED, "手环与雷达候选在时间窗内吻合（基线规则）", out)
+                self._set(S.TRIGGERED, "wristband and radar candidates coincide within the window (baseline rule)", out)
             elif self._last_evidence is None or now - self._last_evidence > self.cfg.suspect_timeout_s:
-                self._set(S.READY, "疑似状态超时，无进一步证据", out)
+                self._set(S.READY, "suspected state timed out, no further evidence", out)
         return out
 
     def features_snapshot(self) -> dict:

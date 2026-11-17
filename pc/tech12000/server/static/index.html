@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TECH12000 监控台</title>
+<title>TECH12000 Monitor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root { --bg:#12151a; --card:#1b2028; --line:#2b323d; --fg:#e6e9ee; --dim:#8b94a3;
@@ -40,80 +40,80 @@
 </head>
 <body>
 <header>
-  <h1>TECH12000 浴室跌倒检测原型 · 监控台</h1>
-  <span id="sim" class="pill warn" style="display:none">模拟数据</span>
-  <span id="conn">连接中…</span>
+  <h1>TECH12000 Bathroom Fall Detection Prototype · Monitor</h1>
+  <span id="sim" class="pill warn" style="display:none">Simulated data</span>
+  <span id="conn">Connecting…</span>
 </header>
 <main>
   <div id="banner"></div>
 
   <div class="card c4">
-    <h2>系统状态</h2>
+    <h2>System status</h2>
     <div id="state">—</div>
     <div id="reason" class="dim"></div>
-    <p>执行模式：<b id="mode">—</b>　监测：<b id="monitoring">—</b></p>
-    <p>部署指令：<b id="deploy">—</b><br>
-       实际展开状态：<b id="outcome">—</b><br>
-       <small>本系统没有气囊压力/展开到位反馈，"指令已发送"不等于"已展开"。</small></p>
-    <p class="dim">更新时间 <span id="time">—</span> · 配置 <span id="cfgv">—</span></p>
+    <p>Mode: <b id="mode">—</b>　Monitoring: <b id="monitoring">—</b></p>
+    <p>Deploy command: <b id="deploy">—</b><br>
+       Actual deployment: <b id="outcome">—</b><br>
+       <small>This system has no airbag pressure or deployment feedback. "Command sent" does not mean "deployed".</small></p>
+    <p class="dim">Updated <span id="time">—</span> · Config <span id="cfgv">—</span></p>
   </div>
 
   <div class="card c8">
-    <h2>设备</h2>
-    <table id="devices"><thead><tr><th>设备</th><th>连接</th><th>数据</th><th>延迟/丢包</th><th>说明</th></tr></thead><tbody></tbody></table>
+    <h2>Devices</h2>
+    <table id="devices"><thead><tr><th>Device</th><th>Link</th><th>Data</th><th>Latency/Loss</th><th>Notes</th></tr></thead><tbody></tbody></table>
     <p class="dim" id="features"></p>
   </div>
 
   <div class="card c12">
-    <h2>控制（仅本机）</h2>
+    <h2>Controls (this computer only)</h2>
     <div class="row">
-      <button onclick="post('/api/monitoring',{on:true})">开始监测</button>
-      <button onclick="post('/api/monitoring',{on:false})">停止监测</button>
-      <button onclick="post('/api/reset',{})">复位</button>
+      <button onclick="post('/api/monitoring',{on:true})">Start monitoring</button>
+      <button onclick="post('/api/monitoring',{on:false})">Stop monitoring</button>
+      <button onclick="post('/api/reset',{})">Reset</button>
       <span class="dim">|</span>
-      <button onclick="post('/api/mode',{mode:'monitor'})">MONITOR 仅监测</button>
-      <button onclick="post('/api/mode',{mode:'demo'})">DEMO 演示</button>
-      <button class="danger" onclick="arm()">ARMED 实际执行使能</button>
+      <button onclick="post('/api/mode',{mode:'monitor'})">MONITOR only</button>
+      <button onclick="post('/api/mode',{mode:'demo'})">DEMO</button>
+      <button class="danger" onclick="arm()">ARMED (real release)</button>
     </div>
     <div class="row" id="simrow" style="display:none">
-      <span class="dim">模拟剧本：</span>
-      <button onclick="post('/api/sim/inject',{kind:'fall'})">跌倒</button>
-      <button onclick="post('/api/sim/inject',{kind:'wave'})">挥手（仅手腕）</button>
-      <button onclick="post('/api/sim/inject',{kind:'squat'})">慢蹲</button>
-      <button onclick="post('/api/sim/inject',{kind:'idle'})">静止</button>
+      <span class="dim">Simulated scenarios: </span>
+      <button onclick="post('/api/sim/inject',{kind:'fall'})">Fall</button>
+      <button onclick="post('/api/sim/inject',{kind:'wave'})">Wave (wrist only)</button>
+      <button onclick="post('/api/sim/inject',{kind:'squat'})">Slow squat</button>
+      <button onclick="post('/api/sim/inject',{kind:'idle'})">Idle</button>
     </div>
     <div id="msg"></div>
   </div>
 
-  <div class="card c6"><h2>合加速度 |a| (m/s²) 与三轴</h2><canvas id="cAcc"></canvas></div>
-  <div class="card c6"><h2>合角速度 |ω| (°/s) 与三轴</h2><canvas id="cGyr"></canvas></div>
+  <div class="card c6"><h2>Acceleration |a| (m/s²) and 3 axes</h2><canvas id="cAcc"></canvas></div>
+  <div class="card c6"><h2>Angular rate |ω| (°/s) and 3 axes</h2><canvas id="cGyr"></canvas></div>
 
   <div class="card c4">
-    <h2>雷达目标</h2>
-    <div id="radar" class="dim">无数据</div>
-    <small>只显示固件实际输出的字段。坐标定义待 SDK 文档确认。</small>
+    <h2>Radar targets</h2>
+    <div id="radar" class="dim">No data</div>
+    <small>Shows only fields the firmware actually outputs. Coordinate convention still to be confirmed from SDK docs.</small>
   </div>
 
   <div class="card c4">
-    <h2>最近事件</h2>
+    <h2>Recent events</h2>
     <table id="events"><tbody></tbody></table>
   </div>
 
   <div class="card c4">
-    <h2>手机配对</h2>
+    <h2>Phone pairing</h2>
     <div id="qr"></div>
-    <p>地址 <code id="paddr"></code><br>令牌 <code id="ptok"></code></p>
-    <button onclick="rotate()">更换令牌（旧手机失效）</button>
+    <p>Address <code id="paddr"></code><br>Token <code id="ptok"></code></p>
+    <button onclick="rotate()">New token (unpairs old phones)</button>
   </div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
-const STATE = { initializing:['初始化','info'], ready:['Ready 监测中','ok'], suspected_fall:['疑似异常','warn'],
-                triggered:['已触发（锁定）','bad'], fault:['故障','bad'] };
-const DEPLOY = { none:'无', not_sent_monitor_mode:'未发送（仅监测模式）', demo_command_sent:'演示指令已发送',
-                 command_sent:'触发指令已发送', controller_acked:'控制器确认接收', send_failed:'发送失败',
-                 skipped_duplicate:'重复事件，已跳过' };
-const NAMES = { wristband:'手环', radar:'雷达', receiver:'接收板', servo:'舵机控制器' };
+const STATE = { initializing:['Starting up','info'], ready:['Ready · Monitoring','ok'], suspected_fall:['Possible fall','warn'],
+                triggered:['Triggered (latched)','bad'], fault:['Fault','bad'] };
+const DEPLOY = { none:'None', not_sent_monitor_mode:'Not sent (monitor only)', demo_command_sent:'Demo command sent',
+                 command_sent:'Deploy command sent', controller_acked:'Controller acknowledged', send_failed:'Send failed',
+                 skipped_duplicate:'Duplicate event, skipped' };
+const NAMES = { wristband:'Wristband', radar:'Radar', receiver:'Receiver', servo:'Servo controller' };
 const acc = [], gyr = [], MAXP = 600;
 
 function fmtT(t) { return t ? new Date(t*1000).toLocaleTimeString() : '—'; }
@@ -122,21 +122,21 @@ function setMsg(t) { $('msg').textContent = t || ''; }
 async function post(url, body) {
   setMsg('');
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  if (!r.ok) { const j = await r.json().catch(()=>({})); setMsg(j.detail || ('请求失败 ' + r.status)); }
+  if (!r.ok) { const j = await r.json().catch(()=>({})); setMsg(j.detail || ('Request failed ' + r.status)); }
   return r;
 }
 function arm() {
-  const v = prompt('即将允许【实际释放】。\n确认释放机构、气瓶、人员位置均已检查。\n输入 ARM 确认：');
+  const v = prompt('This will allow a REAL release.\nConfirm the release mechanism, gas cylinder and people nearby have all been checked.\nType ARM to confirm:');
   if (v !== null) post('/api/mode', {mode:'armed', confirm:v});
 }
 async function loadPairing(method) {
   const r = await fetch('/api/pairing' + (method ? '/rotate' : ''), {method: method || 'GET'});
   const p = await r.json();
-  $('qr').innerHTML = p.qr_svg;      // 来自本机服务生成的 SVG
+  $('qr').innerHTML = p.qr_svg;      // SVG generated by the local server
   $('paddr').textContent = p.host + ':' + p.port;
   $('ptok').textContent = p.token;
 }
-function rotate() { if (confirm('更换后已配对的手机需要重新配对，继续？')) loadPairing('POST'); }
+function rotate() { if (confirm('Phones already paired will need to pair again. Continue?')) loadPairing('POST'); }
 
 function td(tr, text, cls) { const c = tr.insertCell(); c.textContent = text; if (cls) c.className = cls; }
 
@@ -146,54 +146,54 @@ function render(s) {
   $('reason').textContent = s.state_reason || '';
   $('mode').textContent = s.mode.toUpperCase();
   $('mode').className = s.mode === 'armed' ? 'bad' : s.mode === 'demo' ? 'warn' : '';
-  $('monitoring').textContent = s.monitoring ? '运行' : '已停止';
+  $('monitoring').textContent = s.monitoring ? 'running' : 'stopped';
   $('deploy').textContent = DEPLOY[s.deploy_status] || s.deploy_status;
-  $('outcome').textContent = s.last_event ? '未知 / 待现场检查' : '—';
+  $('outcome').textContent = s.last_event ? 'Unknown / check on site' : '—';
   $('time').textContent = fmtT(s.server_time);
   $('cfgv').textContent = s.config_version;
   $('sim').style.display = s.simulated_input ? '' : 'none';
   const b = $('banner');
-  if (s.state === 'triggered' && s.last_event) { b.style.display = 'block'; b.textContent = s.last_event.message + '（复位前保持锁定）'; }
+  if (s.state === 'triggered' && s.last_event) { b.style.display = 'block'; b.textContent = s.last_event.message + ' (latched until reset)'; }
   else b.style.display = 'none';
 
   const tb = $('devices').tBodies[0]; tb.textContent = '';
   for (const [k, d] of Object.entries(s.devices)) {
     const tr = tb.insertRow();
-    td(tr, (NAMES[k] || k) + (d.simulated ? '（模拟）' : ''));
-    td(tr, d.connected ? '已连接' : '未连接', d.connected ? 'ok' : 'bad');
-    if ('fresh' in d) td(tr, d.fresh ? ('实时 · ' + (d.age_s ?? '—') + 's前') : (d.last_rx_wall ? '过期 · 最后 ' + fmtT(d.last_rx_wall) : '无数据'), d.fresh ? 'ok' : 'bad');
-    else if ('heartbeat_age_s' in d) td(tr, d.heartbeat_age_s == null ? '无上报' : '上报 ' + d.heartbeat_age_s + 's前');
+    td(tr, (NAMES[k] || k) + (d.simulated ? ' (sim)' : ''));
+    td(tr, d.connected ? 'Connected' : 'Not connected', d.connected ? 'ok' : 'bad');
+    if ('fresh' in d) td(tr, d.fresh ? ('Live · ' + (d.age_s ?? '—') + 's ago') : (d.last_rx_wall ? 'Stale · last ' + fmtT(d.last_rx_wall) : 'No data'), d.fresh ? 'ok' : 'bad');
+    else if ('heartbeat_age_s' in d) td(tr, d.heartbeat_age_s == null ? 'No reports' : 'Report ' + d.heartbeat_age_s + 's ago');
     else td(tr, '—', 'dim');
     let q = '';
-    if ('lost' in d) q = '丢 ' + d.lost + (d.loss_rate != null ? ' (' + (d.loss_rate*100).toFixed(1) + '%)' : '') + ' · 重复 ' + d.duplicates;
-    if (k === 'wristband' && s.wrist_extra_latency_ms != null) q += ' · 额外延迟 ' + s.wrist_extra_latency_ms + 'ms';
+    if ('lost' in d) q = 'Lost ' + d.lost + (d.loss_rate != null ? ' (' + (d.loss_rate*100).toFixed(1) + '%)' : '') + ' · Dup ' + d.duplicates;
+    if (k === 'wristband' && s.wrist_extra_latency_ms != null) q += ' · Extra latency ' + s.wrist_extra_latency_ms + 'ms';
     td(tr, q || '—', 'dim');
     td(tr, d.detail || '', 'dim');
   }
   const f = s.features;
-  $('features').textContent = '特征：|a|=' + (f.wrist.accel_mag ?? '—') + '  |ω|=' + (f.wrist.gyro_mag ?? '—') +
-    '  雷达高度=' + (f.radar.height ?? '—') + '  窗口内下降=' + (f.radar.height_drop ?? '—') +
-    (f.radar.has_height ? '' : '  （雷达尚未给出目标高度）');
+  $('features').textContent = 'Features: |a|=' + (f.wrist.accel_mag ?? '—') + '  |ω|=' + (f.wrist.gyro_mag ?? '—') +
+    '  Radar height=' + (f.radar.height ?? '—') + '  Drop in window=' + (f.radar.height_drop ?? '—') +
+    (f.radar.has_height ? '' : '  (radar has no target height yet)');
 }
 
 function renderRadar(r) {
   const el = $('radar');
-  if (!r) { el.textContent = '无实时数据'; return; }
+  if (!r) { el.textContent = 'No live data'; return; }
   el.textContent = r.targets.length ? r.targets.map((t, i) =>
-    '目标' + (i+1) + ': x=' + fx(t.x) + ' y=' + fx(t.y) + ' z=' + fx(t.z)).join('\n') : '当前无目标';
+    'Target ' + (i+1) + ': x=' + fx(t.x) + ' y=' + fx(t.y) + ' z=' + fx(t.z)).join('\n') : 'No targets';
   el.style.whiteSpace = 'pre';
-  if (r.n_points != null) el.textContent += '\n点云点数: ' + r.n_points;
+  if (r.n_points != null) el.textContent += '\nPoint count: ' + r.n_points;
 }
 const fx = v => v == null ? '—' : v.toFixed(2);
 
 async function loadEvents() {
   const r = await fetch('/api/events?limit=8'); const j = await r.json();
   const tb = $('events').tBodies[0]; tb.textContent = '';
-  if (!j.events.length) { td(tb.insertRow(), '暂无事件', 'dim'); return; }
+  if (!j.events.length) { td(tb.insertRow(), 'No events yet', 'dim'); return; }
   for (const e of j.events) {
     const tr = tb.insertRow();
     td(tr, new Date(e.t_wall*1000).toLocaleString());
-    td(tr, (e.is_test ? '[测试] ' : '') + (DEPLOY[e.deploy_status] || e.deploy_status), e.is_test ? 'warn' : 'bad');
+    td(tr, (e.is_test ? '[Test] ' : '') + (DEPLOY[e.deploy_status] || e.deploy_status), e.is_test ? 'warn' : 'bad');
   }
 }
 
@@ -226,8 +226,8 @@ function pushImu(rows) {
 
 function connect() {
   const ws = new WebSocket('ws://' + location.host + '/ws');
-  ws.onopen = () => { $('conn').textContent = '已连接'; loadEvents(); };
-  ws.onclose = () => { $('conn').textContent = '与本机服务断开，重连中…'; $('state').textContent = '界面离线'; $('state').className = 'bad'; setTimeout(connect, 1000); };
+  ws.onopen = () => { $('conn').textContent = 'Connected'; loadEvents(); };
+  ws.onclose = () => { $('conn').textContent = 'Disconnected from local server, reconnecting…'; $('state').textContent = 'UI offline'; $('state').className = 'bad'; setTimeout(connect, 1000); };
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
     if (d.type === 'tick') { render(d.status); pushImu(d.imu); renderRadar(d.radar); }
@@ -235,7 +235,7 @@ function connect() {
   };
 }
 fetch('/api/status').then(r => r.json()).then(s => {
-  if (s.devices.wristband.detail === '模拟数据' || s.devices.radar.detail === '模拟数据') $('simrow').style.display = '';
+  if (s.devices.wristband.detail === 'simulated data' || s.devices.radar.detail === 'simulated data') $('simrow').style.display = '';
 });
 loadPairing(); connect();
 </script>

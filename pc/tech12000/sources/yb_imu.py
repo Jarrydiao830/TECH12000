@@ -21,7 +21,7 @@ def checksum(b: bytes) -> int:
 
 def build_set_rate(hz: int) -> bytes:
     if not 10 <= hz <= 100:
-        raise ValueError("输出频率只能 10~100 Hz")
+        raise ValueError("Output rate must be 10-100 Hz")
     f = bytes((0x7E, 0x23, 7, FUNC_SET_RATE, hz, 0x5F))
     return f + bytes((checksum(f),))
 

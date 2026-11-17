@@ -26,9 +26,9 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            DashboardView().tabItem { Label("状态", systemImage: "waveform.path.ecg.rectangle") }
-            EventListView().tabItem { Label("事件", systemImage: "list.bullet") }
-            SettingsView().tabItem { Label("设置", systemImage: "gear") }
+            DashboardView().tabItem { Label("Status", systemImage: "waveform.path.ecg.rectangle") }
+            EventListView().tabItem { Label("Events", systemImage: "list.bullet") }
+            SettingsView().tabItem { Label("Settings", systemImage: "gear") }
         }
         .fullScreenCover(item: $app.alert) { ev in AlertView(event: ev) }
     }

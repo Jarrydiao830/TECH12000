@@ -34,4 +34,4 @@ class ApnsSender:
     async def notify(self, ev: FallEvent) -> None:
         if not self.cfg.enabled:
             return
-        log.warning("APNs 已在配置中启用，但发送模块尚未实现（第二阶段）。事件 %s 未推送。", ev.event_id)
+        log.warning("APNs is enabled in config, but sending is not implemented yet (phase 2). Event %s was not pushed.", ev.event_id)

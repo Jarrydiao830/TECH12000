@@ -86,17 +86,17 @@ class Rs6240Radar:
 
         while not self._stop.is_set():
             if not self.cfg.port:
-                loop.call_soon_threadsafe(self._set_conn, False, "未配置 sources.radar.port")
+                loop.call_soon_threadsafe(self._set_conn, False, "sources.radar.port not configured")
                 time.sleep(2)
                 continue
             try:
                 ser = serial.Serial(self.cfg.port, self.cfg.baud, timeout=0.05)
             except Exception as e:
-                loop.call_soon_threadsafe(self._set_conn, False, f"打不开串口: {e}")
+                loop.call_soon_threadsafe(self._set_conn, False, f"Cannot open serial port: {e}")
                 time.sleep(1)
                 continue
             self.decoder = Rs6240Decoder()      # 重连后从头找帧，不拼接断开前的半帧
-            loop.call_soon_threadsafe(self._set_conn, True, f"已打开 {self.cfg.port} @ {self.cfg.baud}")
+            loop.call_soon_threadsafe(self._set_conn, True, f"Opened {self.cfg.port} @ {self.cfg.baud}")
             try:
                 while not self._stop.is_set():
                     data = ser.read(4096)
@@ -106,7 +106,7 @@ class Rs6240Radar:
                     for pc in self.decoder.feed(data):
                         loop.call_soon_threadsafe(self._emit, pc, t_pc, t_wall)
             except Exception as e:
-                loop.call_soon_threadsafe(self._set_conn, False, f"串口断开: {e}")
+                loop.call_soon_threadsafe(self._set_conn, False, f"Serial port disconnected: {e}")
             finally:
                 try:
                     ser.close()

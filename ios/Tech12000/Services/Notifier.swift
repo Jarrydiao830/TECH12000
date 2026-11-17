@@ -14,8 +14,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// 跌倒事件提醒。通知标识用 event_id，同一事件即使重复送达，系统里也只保留一条。
     func notify(event ev: FallEvent) {
         let c = UNMutableNotificationContent()
-        c.title = ev.is_test ? "模拟测试事件" : "疑似跌倒"
-        c.body = ev.message
+        c.title = ev.is_test ? "Simulated test event" : "Possible fall"
+        c.body = ev.englishMessage
         c.sound = .default
         c.interruptionLevel = .active
         c.threadIdentifier = "events"
@@ -25,8 +25,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// 系统进入故障（数据源断联或过期）时提醒一次。
     func notifyFault(reason: String) {
         let c = UNMutableNotificationContent()
-        c.title = "监测系统故障"
-        c.body = reason.isEmpty ? "电脑端报告故障，当前可能无法检测跌倒。" : "当前可能无法检测跌倒：\(reason)"
+        c.title = "Monitoring fault"
+        c.body = "The computer reports a fault (sensor data missing or stale). Falls may not be detected right now."
         c.sound = .default
         c.threadIdentifier = "system"
         post(id: "fault", c)
@@ -35,8 +35,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// 与电脑断开较长时间时提醒一次。
     func notifyOffline() {
         let c = UNMutableNotificationContent()
-        c.title = "与电脑断开连接"
-        c.body = "手机暂时收不到监测状态，请检查电脑程序是否在运行、手机与电脑是否在同一网络。"
+        c.title = "Disconnected from computer"
+        c.body = "The phone isn't receiving status. Check that the monitoring program is running and that the phone and computer are on the same Wi-Fi."
         c.sound = .default
         c.threadIdentifier = "system"
         post(id: "offline", c)

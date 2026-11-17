@@ -103,9 +103,9 @@ final class AppState: ObservableObject {
             events = list
             lastError = nil
         } catch let e as URLError where e.code == .userAuthenticationRequired {
-            lastError = "配对令牌无效，请重新配对"
+            lastError = "Pairing token is invalid. Please pair again."
         } catch {
-            lastError = "无法连接电脑：\(error.localizedDescription)"
+            lastError = "Can't reach the computer: \(error.localizedDescription)"
         }
     }
 

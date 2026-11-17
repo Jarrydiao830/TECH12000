@@ -19,11 +19,11 @@ class Executor:
         """进入 ARMED 的前置条件。"""
         c = self.cfg
         if not self.servo.ready:
-            return False, f"舵机控制器未就绪：{self.servo.detail}"
+            return False, f"Servo controller not ready: {self.servo.detail}"
         if c.channel is None or c.release_pulse_us is None or c.move_time_ms is None:
-            return False, "配置缺少 servo.channel / release_pulse_us / move_time_ms"
+            return False, "Config missing servo.channel / release_pulse_us / move_time_ms"
         if not self._pulse_ok(c.release_pulse_us):
-            return False, "release_pulse_us 超出允许脉宽范围"
+            return False, "release_pulse_us is outside the allowed pulse range"
         return True, ""
 
     def _pulse_ok(self, pulse: int) -> bool:
@@ -36,18 +36,18 @@ class Executor:
         kind = "demo" if ev.mode is Mode.DEMO else "release"
         # 先落盘占位，再发指令。占位失败 = 以前处理过 = 绝不重发。
         if not self.store.claim_actuation(ev.event_id, kind):
-            log.warning("事件 %s 已有执行记录，跳过", ev.event_id)
+            log.warning("Event %s already has an execution record, skipping", ev.event_id)
             return DeployStatus.SKIPPED_DUPLICATE
         c = self.cfg
         target = c.demo_pulse_us if ev.mode is Mode.DEMO else c.release_pulse_us
         try:
             if c.channel is None or target is None or c.move_time_ms is None:
-                raise RuntimeError(f"配置缺少 {kind} 动作所需的 channel/脉宽/时间")
+                raise RuntimeError(f"Config missing channel/pulse/time for the {kind} action")
             if not self._pulse_ok(target):
-                raise RuntimeError(f"目标脉宽 {target}us 超出 [{c.pulse_min_us},{c.pulse_max_us}]")
+                raise RuntimeError(f"Target pulse {target}us out of range [{c.pulse_min_us},{c.pulse_max_us}]")
             acked = self.servo.move(c.channel, target, c.move_time_ms)
         except Exception as e:  # 发送失败也不重试：是否再次动作由人决定
-            log.error("执行指令失败: %s", e)
+            log.error("Command execution failed: %s", e)
             self.store.finish_actuation(ev.event_id, f"send_failed: {e}")
             ev.detail["actuation_error"] = str(e)
             return DeployStatus.SEND_FAILED

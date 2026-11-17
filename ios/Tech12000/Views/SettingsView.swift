@@ -11,27 +11,27 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("电脑地址，如 192.168.1.20", text: $host)
+                    TextField("Computer address, e.g. 192.168.1.20", text: $host)
                         .keyboardType(.numbersAndPunctuation).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    TextField("端口", text: $port).keyboardType(.numberPad)
-                    SecureField("配对令牌", text: $token)
-                    Button("保存并连接") {
+                    TextField("Port", text: $port).keyboardType(.numberPad)
+                    SecureField("Pairing token", text: $token)
+                    Button("Save and connect") {
                         if let p = Int(port) { app.apply(Pairing(host: host.trimmingCharacters(in: .whitespaces), port: p, token: token)) }
                     }.disabled(host.isEmpty || token.isEmpty || Int(port) == nil)
-                    if app.pairing != nil { Button("取消配对", role: .destructive) { app.unpair() } }
-                } header: { Text("连接设置") } footer: {
-                    Text("也可以用系统相机扫描电脑监控台上的二维码自动配对。手机与电脑需在同一局域网，且网络允许设备互访。")
+                    if app.pairing != nil { Button("Unpair", role: .destructive) { app.unpair() } }
+                } header: { Text("Connection") } footer: {
+                    Text("You can also pair by scanning the QR code on the computer's monitor page with the Camera app. The phone and computer must be on the same Wi-Fi, and the network must allow devices to reach each other.")
                 }
                 Section {
-                    LabeledContent("通知权限", value: authText)
+                    LabeledContent("Notifications", value: authText)
                     if app.notificationAuth == .notDetermined {
-                        Button("请求通知权限") { Task { await app.requestNotificationAuth() } }
+                        Button("Allow notifications") { Task { await app.requestNotificationAuth() } }
                     }
-                } header: { Text("通知") } footer: {
-                    Text("当前版本只在 App 打开时显示告警；锁屏/后台推送尚未启用。")
+                } header: { Text("Notifications") } footer: {
+                    Text("Alerts arrive while the app is open, and for a short time after you leave it. They can't arrive once iOS suspends the app — that needs push notifications (APNs), which aren't set up yet.")
                 }
             }
-            .navigationTitle("设置")
+            .navigationTitle("Settings")
             .onAppear {
                 if let p = app.pairing { host = p.host; port = String(p.port); token = p.token }
                 Task { await app.refreshNotificationAuth() }
@@ -41,9 +41,9 @@ struct SettingsView: View {
 
     private var authText: String {
         switch app.notificationAuth {
-        case .authorized, .provisional, .ephemeral: "已允许"
-        case .denied: "已拒绝（请到系统设置中开启）"
-        default: "未请求"
+        case .authorized, .provisional, .ephemeral: "Allowed"
+        case .denied: "Denied (turn on in iOS Settings)"
+        default: "Not asked yet"
         }
     }
 }

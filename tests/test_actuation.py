@@ -25,7 +25,7 @@ def test_demo_uses_demo_position_and_is_marked_test(rig):
     assert [m[2] for m in rig.servo.moves] == [1550]
     ev = rig.eng.last_event
     assert ev.deploy_status is DeployStatus.DEMO_SENT and ev.is_test
-    assert "模拟测试" in event_message(ev)
+    assert "Simulated test" in event_message(ev)
 
 
 def test_arm_requires_confirm_ready_and_config(rig):
@@ -79,4 +79,4 @@ def test_message_never_claims_deployment():
     for st in DeployStatus:
         ev = FallEvent("x", 0.0, Mode.ARMED, False, deploy_status=st)
         msg = event_message(ev)
-        assert "成功" not in msg and "已展开" not in msg
+        assert "success" not in msg.lower() and "deployed" not in msg.lower()

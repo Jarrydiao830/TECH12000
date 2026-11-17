@@ -103,7 +103,7 @@ class RadarFeatures:
         """点云 -> 一个"等效目标"：x/y 取中位数，高度取分位数。规则是未经验证的基线。"""
         pc = self.cfg.points
         if pc.height_axis is None:
-            self.points_unusable = "未配置 fusion.radar.points.height_axis（竖直轴待安装后确认）"
+            self.points_unusable = "fusion.radar.points.height_axis not configured (set the vertical axis after mounting)"
             return None
         self.points_unusable = None
         pts = [p for p in points if pc.min_snr_db is None or p[4] >= pc.min_snr_db]

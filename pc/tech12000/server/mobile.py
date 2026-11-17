@@ -46,7 +46,7 @@ def create_mobile_app(engine: Engine, hub: Hub, get_token) -> FastAPI:
 
     def auth(authorization: str | None = Header(default=None)) -> None:
         if not token_ok(get_token(), authorization):
-            raise HTTPException(401, "未配对或令牌无效")
+            raise HTTPException(401, "Not paired or token invalid")
 
     r = APIRouter(prefix="/api/v1", dependencies=[Depends(auth)])
 
@@ -62,7 +62,7 @@ def create_mobile_app(engine: Engine, hub: Hub, get_token) -> FastAPI:
     def event(event_id: str) -> dict:
         ev = engine.store.get_event(event_id)
         if ev is None:
-            raise HTTPException(404, "无此事件")
+            raise HTTPException(404, "No such event")
         return ev
 
     @r.post("/apns/token")

@@ -28,7 +28,7 @@ class SimScenario:
 
     def inject(self, kind: str, now: float) -> None:
         if kind not in SCENARIOS:
-            raise ValueError(f"未知剧本 {kind}")
+            raise ValueError(f"Unknown scenario {kind}")
         self.kind, self.t0 = kind, now
 
     def reset(self) -> None:
@@ -83,7 +83,7 @@ class SimWristband:
 
     async def run(self) -> None:
         mon = self.sink.monitors[self.name]
-        mon.connected, mon.detail = True, "模拟数据"
+        mon.connected, mon.detail = True, "simulated data"
         nxt = time.monotonic()
         while True:
             self.sink.on_imu(self.make(time.monotonic()))
@@ -109,7 +109,7 @@ class SimRadar:
 
     async def run(self) -> None:
         mon = self.sink.monitors[self.name]
-        mon.connected, mon.detail = True, "模拟数据"
+        mon.connected, mon.detail = True, "simulated data"
         nxt = time.monotonic()
         while True:
             self.sink.on_radar(self.make(time.monotonic()))

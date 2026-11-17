@@ -150,7 +150,7 @@ def test_background_thread_not_ready_when_controller_silent():
     try:
         time.sleep(0.2)
         assert not s.ready
-        assert "等待电压应答" in s.detail
+        assert "waiting for voltage reply" in s.detail
     finally:
         s.close()
 
@@ -160,6 +160,6 @@ def test_no_port_configured():
     s.open()
     try:
         time.sleep(0.05)
-        assert not s.ready and "未配置" in s.detail
+        assert not s.ready and "not configured" in s.detail
     finally:
         s.close()
