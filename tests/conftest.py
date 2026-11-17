@@ -33,6 +33,7 @@ class Rig:
 
     def inject(self, kind):
         self.scn.inject(kind, self.t)
+        self.eng.sim_label = self.scn.label
 
     def configure_servo(self):
         s = self.cfg.actuators.servo

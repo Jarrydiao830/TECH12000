@@ -64,6 +64,10 @@ def create_operator_app(engine: Engine, hub: Hub, get_token: Callable[[], str],
     def events(limit: int = 50) -> dict:
         return {"events": engine.store.list_events(limit)}
 
+    @app.get("/api/fall_snapshot")
+    def fall_snapshot() -> dict:
+        return {"snapshot": engine.fall_snapshot}
+
     @app.post("/api/mode")
     def set_mode(body: ModeBody) -> dict:
         ok, why = engine.set_mode(body.mode, body.confirm)
@@ -136,7 +140,10 @@ def create_operator_app(engine: Engine, hub: Hub, get_token: Callable[[], str],
                 radar = None
                 if rf is not None and engine.monitors["radar"].is_fresh(time.monotonic()):
                     radar = {"targets": [{"x": t.x, "y": t.y, "z": t.z} for t in rf.targets],
-                             "n_points": None if rf.points is None else len(rf.points)}
+                             "n_points": None if rf.points is None else len(rf.points),
+                             "points": None if rf.points is None else [list(p) for p in rf.points[:300]],
+                             "joints": None if rf.joints is None else [list(j) for j in rf.joints],
+                             "simulated": rf.simulated}
                 await sock.send_json({"type": "tick", "status": engine.status(time.time()),
                                       "imu": imu, "radar": radar})
         except (WebSocketDisconnect, RuntimeError):

@@ -36,6 +36,21 @@
   #qr svg { background:#fff; border-radius:6px; max-width:200px; height:auto; }
   code { background:#141820; padding:1px 5px; border-radius:4px; word-break:break-all; }
   small { color:var(--dim); }
+  canvas.tall { height:340px; cursor:grab; }
+  .hrow { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+  .hrow h2 { margin:0; }
+  .seg button { padding:3px 10px; font-size:12px; border-radius:0; margin-left:-1px; }
+  .seg button:first-child { border-radius:6px 0 0 6px; } .seg button:last-child { border-radius:0 6px 6px 0; }
+  .seg button.on { background:#1f6feb; border-color:#1f6feb; }
+  .legend { font-size:12px; color:var(--dim); margin-top:6px; }
+  .legend label { cursor:pointer; margin-right:6px; } .legend input { vertical-align:-2px; }
+  .grad { display:inline-block; width:70px; height:8px; border-radius:4px; vertical-align:middle;
+          background:linear-gradient(90deg,hsl(220,85%,60%),hsl(150,85%,55%),hsl(60,90%,55%),hsl(10,90%,60%)); }
+  .snap { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+  @media (max-width:1000px) { .snap { grid-template-columns:1fr; } }
+  .snap canvas { height:150px; }
+  .cap { font-size:12px; color:var(--dim); margin:6px 0 3px; } .cap i { font-style:normal; margin-left:6px; }
+  #snapStats td:last-child, #snapAxes td { font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -77,7 +92,12 @@
     </div>
     <div class="row" id="simrow" style="display:none">
       <span class="dim">Simulated scenarios: </span>
-      <button onclick="post('/api/sim/inject',{kind:'fall'})">Fall</button>
+      <button onclick="post('/api/sim/inject',{kind:'fall_forward'})">Forward fall</button>
+      <button onclick="post('/api/sim/inject',{kind:'fall_backward'})">Backward fall</button>
+      <button onclick="post('/api/sim/inject',{kind:'fall_side'})">Sideways fall</button>
+      <button onclick="post('/api/sim/inject',{kind:'slip'})">Slip</button>
+      <button onclick="post('/api/sim/inject',{kind:'faint'})">Faint</button>
+      <span class="dim">|</span>
       <button onclick="post('/api/sim/inject',{kind:'wave'})">Wave (wrist only)</button>
       <button onclick="post('/api/sim/inject',{kind:'squat'})">Slow squat</button>
       <button onclick="post('/api/sim/inject',{kind:'idle'})">Idle</button>
@@ -88,18 +108,54 @@
   <div class="card c6"><h2>Acceleration |a| (m/s²) and 3 axes</h2><canvas id="cAcc"></canvas></div>
   <div class="card c6"><h2>Angular rate |ω| (°/s) and 3 axes</h2><canvas id="cGyr"></canvas></div>
 
-  <div class="card c4">
-    <h2>Radar targets</h2>
-    <div id="radar" class="dim">No data</div>
-    <small>Shows only fields the firmware actually outputs. Coordinate convention still to be confirmed from SDK docs.</small>
+  <div class="card c8">
+    <div class="hrow"><h2>mmWave radar point cloud</h2>
+      <div class="seg" id="cloudSeg">
+        <button data-v="live" class="on">Live</button><button data-v="before">Before fall</button><button data-v="after">After fall</button>
+      </div></div>
+    <canvas id="cCloud" class="tall"></canvas>
+    <div class="legend"><label><input type="checkbox" id="showPts" checked> Points</label>
+      <label><input type="checkbox" id="showSkel" checked> Skeleton</label> ·
+      <span class="grad"></span> Point height 0 → 2 m · bigger = stronger return (SNR) · <span style="color:#fff">◎</span> tracked target ·
+      <span style="color:#7ee0ff">●—●</span> tracked joints · drag to rotate, double-click to reset
+      <span id="cloudInfo" class="dim"></span></div>
   </div>
 
   <div class="card c4">
+    <h2>Radar targets</h2>
+    <div id="radar" class="dim">No data</div>
+    <canvas id="cH" style="height:110px;margin-top:8px"></canvas>
+    <small>Target height (m), last 6 s. Shows only fields the firmware actually outputs. Coordinate convention still to be confirmed from SDK docs.</small>
+  </div>
+
+  <div class="card c12" id="snapCard">
+    <div class="hrow"><h2>Fall snapshot · 6-axis IMU and radar around the latest event</h2>
+      <span><b id="snapKind" style="margin-right:8px"></b><span id="snapSim" class="pill warn" style="display:none">Simulated data</span>
+      <button id="snapCsv" disabled>Download CSV</button></span></div>
+    <div id="snapEmpty" class="dim">No fall event yet. Press one of the fall buttons under Simulated scenarios to create one.</div>
+    <div id="snapBody" class="snap" style="display:none">
+      <div>
+        <div class="cap">Acceleration (m/s²) · <i style="color:#e6e9ee">|a|</i> <i style="color:#f85149">ax</i> <i style="color:#3fb950">ay</i> <i style="color:#58a6ff">az</i></div>
+        <canvas id="sAcc"></canvas>
+        <div class="cap">Angular rate (°/s) · <i style="color:#e6e9ee">|ω|</i> <i style="color:#f85149">gx</i> <i style="color:#3fb950">gy</i> <i style="color:#58a6ff">gz</i></div>
+        <canvas id="sGyr"></canvas>
+        <div class="cap">Radar target height (m)</div>
+        <canvas id="sH" style="height:100px"></canvas>
+        <small>Time is relative to the moment the computer confirmed the fall (0 s). Dashed lines are the current detection thresholds (placeholder values, not calibrated). Shaded: free fall (orange), impact (red).</small>
+      </div>
+      <div>
+        <table id="snapStats"><tbody></tbody></table>
+        <table id="snapAxes" style="margin-top:12px"><thead><tr><th>Axis</th><th>Min</th><th>Max</th><th>At impact</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card c6">
     <h2>Recent events</h2>
     <table id="events"><tbody></tbody></table>
   </div>
 
-  <div class="card c4">
+  <div class="card c6">
     <h2>Phone pairing</h2>
     <div id="qr"></div>
     <p>Address <code id="paddr"></code><br>Token <code id="ptok"></code></p>
@@ -224,20 +280,257 @@ function pushImu(rows) {
   plot($('cAcc'), acc, col); plot($('cGyr'), gyr, col);
 }
 
+// ---------------------------------------------------------------- radar point cloud (3D, drag to rotate)
+const cam = { yaw: -0.6, pitch: 0.45 }, CAM0 = { ...cam };
+let cloudView = 'live', liveRadar = null, snap = null, hTrace = [];
+const cc = $('cCloud');
+(() => {
+  let drag = null;
+  cc.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cc.setPointerCapture(e.pointerId); cc.style.cursor = 'grabbing'; });
+  cc.addEventListener('pointermove', e => {
+    if (!drag) return;
+    cam.yaw += (e.clientX - drag[0]) * 0.01;
+    cam.pitch = Math.max(-0.1, Math.min(1.4, cam.pitch + (e.clientY - drag[1]) * 0.01));
+    drag = [e.clientX, e.clientY]; drawCloud();
+  });
+  cc.addEventListener('pointerup', () => { drag = null; cc.style.cursor = ''; });
+  cc.addEventListener('dblclick', () => { Object.assign(cam, CAM0); drawCloud(); });
+  $('showPts').onchange = $('showSkel').onchange = () => drawCloud();
+  for (const b of $('cloudSeg').children) b.onclick = () => {
+    cloudView = b.dataset.v;
+    for (const o of $('cloudSeg').children) o.classList.toggle('on', o === b);
+    drawCloud();
+  };
+})();
+
+function sizeCanvas(c) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w*dpr) || c.height !== Math.round(h*dpr)) { c.width = Math.round(w*dpr); c.height = Math.round(h*dpr); }
+  const g = c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  return [g, w, h];
+}
+
+function drawCloud() {
+  const [g, w, h] = sizeCanvas(cc);
+  let pts = null, target = null, joints = null, info = '';
+  if (cloudView === 'live') {
+    if (liveRadar && liveRadar.points) { pts = liveRadar.points; joints = liveRadar.joints; target = liveRadar.targets.find(t => t.z != null); info = pts.length + ' points · live'; }
+    else info = liveRadar ? 'This radar source gives no point cloud' : 'No live radar data';
+  } else if (snap) {
+    pts = cloudView === 'before' ? snap.cloud_before : snap.cloud_after;
+    joints = cloudView === 'before' ? snap.joints_before : snap.joints_after;
+    const t = cloudView === 'before' ? snap.t_cloud_before : null;
+    info = pts ? pts.length + ' points · ' + (cloudView === 'before'
+      ? ((t - snap.t_event).toFixed(1) + ' s before trigger') : 'after trigger') : 'Not captured';
+  } else info = 'No fall event yet';
+  if (joints) info += ' · ' + joints.length + ' joints' + ((cloudView === 'live' ? liveRadar.simulated : snap.simulated) ? ' (simulated skeleton)' : '');
+  else if (pts) info += ' · no skeleton from this source';
+  $('cloudInfo').textContent = ' · ' + info;
+
+  // world: x right, y away from radar, z up. Orbit around the middle of the room.
+  const C = [0, 1.5, 0.8], cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const F = Math.min(w, h) * 1.9, D = 5.2;
+  const P = (x, y, z) => {
+    let X = x - C[0], Y = y - C[1], Z = z - C[2];
+    const x1 = X*cy - Y*sy, y1 = X*sy + Y*cy;           // yaw around z
+    const y2 = y1*cp - Z*sp, z2 = y1*sp + Z*cp;         // pitch around x
+    const s = F / (D + y2);
+    return [w/2 + x1*s, h/2 - z2*s, y2, s];
+  };
+  const line = (a, b, col, lw = 1) => { const p = P(...a), q = P(...b); g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]); g.stroke(); };
+
+  // floor grid 3 m x 3 m
+  for (let i = 0; i <= 6; i++) {
+    const v = -1.5 + i*0.5, u = i*0.5;
+    line([v, 0, 0], [v, 3, 0], '#262d38'); line([-1.5, u, 0], [1.5, u, 0], '#262d38');
+  }
+  line([0,0,0],[0.4,0,0],'#f85149',2); line([0,0,0],[0,0.4,0],'#3fb950',2); line([0,0,0],[0,0,0.4],'#58a6ff',2);
+  g.fillStyle = '#8b94a3'; g.font = '11px sans-serif';
+  let o = P(0, 0, 0); g.fillText('Radar', o[0] + 6, o[1] + 14);
+  for (const [lbl, p] of [['x', [0.45,0,0]], ['y', [0,0.45,0]], ['z', [0,0,0.45]]]) { const q = P(...p); g.fillText(lbl, q[0]+2, q[1]); }
+  o = P(1.5, 3, 0); g.fillText('3 m', o[0] + 4, o[1]);
+
+  if (pts && $('showPts').checked) {
+    const proj = pts.map(p => [P(p[0], p[1], p[2]), p]).sort((a, b) => b[0][2] - a[0][2]);
+    for (const [[sx, sy2, , s], p] of proj) {
+      const hue = 220 - Math.max(0, Math.min(1, p[2] / 2)) * 210;
+      const r = Math.max(1.5, (1 + p[4] / 12) * s / 120);
+      g.fillStyle = `hsla(${hue},85%,60%,${p[4] < 10 ? 0.35 : 0.9})`;
+      g.beginPath(); g.arc(sx, sy2, r, 0, 6.283); g.fill();
+    }
+  }
+  if (joints && $('showSkel').checked) {
+    const J = {}; for (const [n, x, y, z] of joints) J[n] = P(x, y, z);
+    g.lineCap = 'round';
+    for (const [a, b] of SKEL) if (J[a] && J[b]) {
+      g.strokeStyle = '#7ee0ffcc'; g.lineWidth = Math.max(2, J[a][3] / 70);
+      g.beginPath(); g.moveTo(J[a][0], J[a][1]); g.lineTo(J[b][0], J[b][1]); g.stroke();
+    }
+    for (const [n, q] of Object.entries(J)) {
+      const r = n === 'head' ? Math.max(7, q[3] / 22) : Math.max(3, q[3] / 60);
+      g.fillStyle = n === 'head' ? '#7ee0ff55' : '#ffffff'; g.strokeStyle = '#7ee0ff'; g.lineWidth = 1.5;
+      g.beginPath(); g.arc(q[0], q[1], r, 0, 6.283); g.fill(); g.stroke();
+    }
+  }
+  if (target) {
+    const p = P(target.x ?? 0, target.y ?? 0, target.z), f = P(target.x ?? 0, target.y ?? 0, 0);
+    g.setLineDash([3, 3]); g.strokeStyle = '#ffffff88'; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(f[0], f[1]); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(p[0], p[1], 9, 0, 6.283); g.stroke();
+    g.fillStyle = '#fff'; g.fillText('z=' + target.z.toFixed(2) + ' m', p[0] + 12, p[1] + 4);
+  }
+}
+
+const SKEL = [['head','neck'], ['neck','l_sho'], ['neck','r_sho'], ['l_sho','l_elb'], ['l_elb','l_hand'],
+  ['r_sho','r_elb'], ['r_elb','r_hand'], ['neck','pelvis'], ['pelvis','l_hip'], ['pelvis','r_hip'],
+  ['l_hip','l_knee'], ['l_knee','l_foot'], ['r_hip','r_knee'], ['r_knee','r_foot']];
+
+// ---------------------------------------------------------------- generic time chart
+function chart(c, o) {
+  const [g, w, h] = sizeCanvas(c);
+  const L = 38, R = 8, T = 6, B = 16;
+  let lo = Infinity, hi = -Infinity;
+  for (const s of o.series) for (const [, v] of s.data) if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  for (const l of o.hlines || []) { lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); }
+  if (!isFinite(lo)) return;
+  if (hi - lo < (o.minSpan || 1)) { const m = (hi + lo) / 2; hi = m + (o.minSpan || 1) / 2; lo = m - (o.minSpan || 1) / 2; }
+  const pad = (hi - lo) * 0.06; hi += pad; lo -= pad;
+  const X = t => L + (t - o.t0) / (o.t1 - o.t0) * (w - L - R), Y = v => T + (hi - v) / (hi - lo) * (h - T - B);
+  for (const sh of o.shade || []) { g.fillStyle = sh.color; g.fillRect(X(sh.a), T, Math.max(1, X(sh.b) - X(sh.a)), h - T - B); }
+  g.font = '10px sans-serif'; g.fillStyle = '#8b94a3'; g.strokeStyle = '#262d38'; g.lineWidth = 1;
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, y = Y(v);
+    g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke();
+    g.fillText(v.toFixed(Math.abs(hi - lo) < 5 ? 2 : 0), 2, y + 3);
+  }
+  const step = o.tick || 0.5;
+  for (let t = Math.ceil(o.t0 / step) * step; t <= o.t1 + 1e-9; t += step)
+    g.fillText((t > 0 ? '+' : '') + t.toFixed(1) + (o.unit || 's'), X(t) - 12, h - 3);
+  for (const l of o.hlines || []) {
+    g.setLineDash([4, 4]); g.strokeStyle = l.color; g.beginPath(); g.moveTo(L, Y(l.v)); g.lineTo(w - R, Y(l.v)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = l.color; g.fillText(l.label, w - R - g.measureText(l.label).width - 2, Y(l.v) - 3);
+  }
+  for (const vl of o.vlines || []) {
+    g.strokeStyle = vl.color; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(vl.t), T); g.lineTo(X(vl.t), h - B); g.stroke();
+    g.fillStyle = vl.color; g.fillText(vl.label, X(vl.t) + 4, T + 10);
+  }
+  for (const s of [...o.series].reverse()) {
+    g.strokeStyle = s.color; g.lineWidth = s.width || 1; g.beginPath(); let pen = false;
+    for (const [t, v] of s.data) { if (v == null) { pen = false; continue; } pen ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)); pen = true; }
+    g.stroke();
+  }
+}
+
+// ---------------------------------------------------------------- fall snapshot
+const AX = ['ax (m/s²)', 'ay (m/s²)', 'az (m/s²)', 'gx (°/s)', 'gy (°/s)', 'gz (°/s)'];
+let snapTimer = null;
+async function loadSnapshot() {
+  const j = await (await fetch('/api/fall_snapshot')).json();
+  snap = j.snapshot;
+  renderSnapshot();
+  clearTimeout(snapTimer);
+  if (snap && !snap.complete) snapTimer = setTimeout(loadSnapshot, 500);
+}
+
+function runs(rows, pred) {   // contiguous [start, end] time ranges where pred holds
+  const out = []; let a = null, prev = null;
+  for (const r of rows) { if (pred(r)) { if (a == null) a = r.t; prev = r.t; } else if (a != null) { out.push([a, prev]); a = null; } }
+  if (a != null) out.push([a, prev]);
+  return out;
+}
+
+function renderSnapshot() {
+  if (!snap) { $('snapEmpty').style.display = ''; $('snapBody').style.display = 'none'; $('snapCsv').disabled = true; return; }
+  $('snapEmpty').style.display = 'none'; $('snapBody').style.display = ''; $('snapCsv').disabled = false;
+  $('snapSim').style.display = snap.simulated ? '' : 'none';
+  $('snapKind').textContent = snap.scenario ? 'Scenario: ' + snap.scenario : '';
+  const te = snap.t_event, th = snap.thresholds, t0 = -snap.pre_s, t1 = snap.post_s;
+  const rows = snap.imu.map(r => ({ t: r[0] - te, v: r.slice(1), a: Math.hypot(r[1], r[2], r[3]), w: Math.hypot(r[4], r[5], r[6]) }));
+  if (!rows.length) return;
+  const ff = runs(rows, r => r.a <= th.freefall_accel_ms2), imp = runs(rows, r => r.a >= th.impact_accel_ms2);
+  const shade = [...ff.map(([a, b]) => ({ a, b: b + 0.01, color: '#d2992233' })), ...imp.map(([a, b]) => ({ a, b: b + 0.01, color: '#f8514940' }))];
+  const vl = [{ t: 0, color: '#f85149', label: 'Triggered' }];
+  const col = ['#e6e9ee', '#f85149', '#3fb950', '#58a6ff'];
+  chart($('sAcc'), { t0, t1, shade, vlines: vl, series: [
+      { data: rows.map(r => [r.t, r.a]), color: col[0], width: 2 },
+      ...[0, 1, 2].map(i => ({ data: rows.map(r => [r.t, r.v[i]]), color: col[i+1] + 'aa' }))],
+    hlines: [{ v: th.impact_accel_ms2, color: '#f85149', label: 'impact ' + th.impact_accel_ms2 },
+             { v: th.freefall_accel_ms2, color: '#d29922', label: 'free fall ' + th.freefall_accel_ms2 }] });
+  chart($('sGyr'), { t0, t1, shade, vlines: vl, series: [
+      { data: rows.map(r => [r.t, r.w]), color: col[0], width: 2 },
+      ...[3, 4, 5].map(i => ({ data: rows.map(r => [r.t, r.v[i]]), color: col[i-2] + 'aa' }))],
+    hlines: [{ v: th.gyro_dps, color: '#f85149', label: 'gyro ' + th.gyro_dps }] });
+  const hr = snap.radar.filter(r => r[1] != null).map(r => [r[0] - te, r[1]]);
+  chart($('sH'), { t0, t1, vlines: vl, minSpan: 0.4, series: [{ data: hr, color: '#14b8a6', width: 2 }] });
+
+  // numbers
+  const pk = rows.reduce((m, r) => r.a > m.a ? r : m), mn = rows.reduce((m, r) => r.a < m.a ? r : m),
+        pw = rows.reduce((m, r) => r.w > m.w ? r : m);
+  const ffDur = ff.reduce((s, [a, b]) => Math.max(s, b - a), 0);
+  const hBefore = hr.filter(([t]) => t < (ff.length ? ff[0][0] : -1)).map(r => r[1]);
+  const hb = hBefore.length ? hBefore.reduce((s, v) => s + v, 0) / hBefore.length : null, ha = hr.length ? hr[hr.length-1][1] : null;
+  const sgn = t => (t >= 0 ? '+' : '') + t.toFixed(2) + ' s';
+  const stats = [
+    ['Event time', new Date(te * 1000).toLocaleTimeString()],
+    ['Scenario', snap.scenario ? snap.scenario + ' (simulated, known in advance)' : 'Unknown (real data, type not classified)'],
+    ['Status', snap.complete ? 'Captured' : 'Capturing…'],
+    ['Samples', rows.length + ' IMU · ' + snap.radar.length + ' radar frames'],
+    ['Peak |a|', pk.a.toFixed(1) + ' m/s² (' + (pk.a / 9.81).toFixed(1) + ' g) at ' + sgn(pk.t)],
+    ['Min |a|', mn.a.toFixed(1) + ' m/s² (' + (mn.a / 9.81).toFixed(2) + ' g) at ' + sgn(mn.t)],
+    ['Longest free fall', ffDur > 0 ? (ffDur * 1000).toFixed(0) + ' ms (|a| ≤ ' + th.freefall_accel_ms2 + ')' : 'none'],
+    ['Peak |ω|', pw.w.toFixed(0) + ' °/s at ' + sgn(pw.t)],
+    ['Radar height', hb != null && ha != null ? hb.toFixed(2) + ' → ' + ha.toFixed(2) + ' m' : '—'],
+    ['Height drop', hb != null && ha != null ? (hb - ha).toFixed(2) + ' m (threshold ' + th.height_drop_m + ')' : '—'],
+    ['Impact → trigger', imp.length ? (-imp[0][0] * 1000).toFixed(0) + ' ms' : '—'],
+  ];
+  const tb = $('snapStats').tBodies[0]; tb.textContent = '';
+  for (const [k, v] of stats) { const tr = tb.insertRow(); td(tr, k, 'dim'); td(tr, v); }
+  const at = imp.length ? rows.find(r => r.t >= imp[0][0]) : pk;
+  const ta = $('snapAxes').tBodies[0]; ta.textContent = '';
+  AX.forEach((name, i) => {
+    let lo = Infinity, hi = -Infinity; for (const r of rows) { lo = Math.min(lo, r.v[i]); hi = Math.max(hi, r.v[i]); }
+    const tr = ta.insertRow(); const d = i < 3 ? 1 : 0;
+    td(tr, name); td(tr, lo.toFixed(d)); td(tr, hi.toFixed(d)); td(tr, at.v[i].toFixed(d));
+  });
+  if (cloudView !== 'live') drawCloud();
+}
+
+$('snapCsv').onclick = () => {
+  if (!snap) return;
+  const lines = ['t_rel_s,t_wall,ax,ay,az,gx,gy,gz'];
+  for (const r of snap.imu) lines.push([(r[0] - snap.t_event).toFixed(3), r[0].toFixed(3), ...r.slice(1).map(v => v.toFixed(3))].join(','));
+  lines.push('', 't_rel_s,t_wall,radar_height_m,n_points');
+  for (const r of snap.radar) lines.push([(r[0] - snap.t_event).toFixed(3), r[0].toFixed(3), r[1] ?? '', r[2] ?? ''].join(','));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+  a.download = 'fall_' + new Date(snap.t_event * 1000).toISOString().replace(/[:.]/g, '-') + (snap.simulated ? '_simulated' : '') + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+function onRadar(r) {
+  liveRadar = r;
+  const t = Date.now() / 1000, tg = r && r.targets.find(x => x.z != null);
+  hTrace.push([t, tg ? tg.z : null]);
+  while (hTrace.length && hTrace[0][0] < t - 6) hTrace.shift();
+  chart($('cH'), { t0: -6, t1: 0, tick: 2, minSpan: 0.4, series: [{ data: hTrace.map(([s, z]) => [s - t, z]), color: '#14b8a6', width: 2 }] });
+  if (cloudView === 'live') drawCloud();
+}
+window.addEventListener('resize', () => { drawCloud(); renderSnapshot(); });
+
 function connect() {
   const ws = new WebSocket('ws://' + location.host + '/ws');
   ws.onopen = () => { $('conn').textContent = 'Connected'; loadEvents(); };
   ws.onclose = () => { $('conn').textContent = 'Disconnected from local server, reconnecting…'; $('state').textContent = 'UI offline'; $('state').className = 'bad'; setTimeout(connect, 1000); };
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
-    if (d.type === 'tick') { render(d.status); pushImu(d.imu); renderRadar(d.radar); }
-    else if (d.type === 'event') loadEvents();
+    if (d.type === 'tick') { render(d.status); pushImu(d.imu); renderRadar(d.radar); onRadar(d.radar); }
+    else if (d.type === 'event') { loadEvents(); loadSnapshot(); }
+    else if (d.type === 'state' && d.state.to === 'triggered') loadSnapshot();
   };
 }
 fetch('/api/status').then(r => r.json()).then(s => {
   if (s.devices.wristband.detail === 'simulated data' || s.devices.radar.detail === 'simulated data') $('simrow').style.display = '';
 });
-loadPairing(); connect();
+loadPairing(); loadSnapshot(); drawCloud(); connect();
 </script>
 </body>
 </html>

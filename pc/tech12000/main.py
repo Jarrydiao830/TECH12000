@@ -61,7 +61,9 @@ def build(cfg: Config):
         raise ValueError(f"Unknown radar driver {r.driver}")
 
     if "sim" in (w.driver, r.driver):
-        sim_inject = lambda kind: scenario.inject(kind, time.monotonic())
+        def sim_inject(kind: str) -> None:
+            scenario.inject(kind, time.monotonic())
+            engine.sim_label = scenario.label
         engine.on_reset_hooks.append(scenario.reset)
 
     engine.led = make_led(cfg.actuators.led, receiver_send)

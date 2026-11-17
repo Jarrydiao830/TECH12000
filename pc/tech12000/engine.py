@@ -46,6 +46,9 @@ class Engine:
         self.live_imu: deque = deque(maxlen=600)   # 界面曲线用
         self.live_n = 0
         self.last_radar: Optional[RadarFrame] = None
+        self.live_radar: deque = deque(maxlen=120)  # (t_wall, frame), for the fall snapshot
+        self.fall_snapshot: Optional[dict] = None   # sensor data around the latest event, for the UI
+        self.sim_label: Optional[str] = None        # last injected simulated scenario (UI label only)
         self.last_latency: Optional[float] = None
         self._wrist_clock = ClockOffsetEstimator()
         self._inline = inline_actuation
@@ -67,8 +70,13 @@ class Engine:
             self.last_latency = self._wrist_clock.latency_estimate(dev_s, s.t_pc)
         self._sim_input = self._sim_input or s.simulated
         self.rec.write("imu", s.to_dict())
-        self.live_imu.append((s.t_wall, *s.accel, *s.gyro))
+        row = (s.t_wall, *s.accel, *s.gyro)
+        self.live_imu.append(row)
         self.live_n += 1
+        snap = self.fall_snapshot
+        if snap is not None and not snap["complete"]:
+            snap["imu"].append(row)
+            self._maybe_close_snapshot(s.t_wall)
         if self.monitoring:
             self.fsm.on_imu(s)
         self.tick(s.t_pc, s.t_wall)
@@ -80,6 +88,14 @@ class Engine:
         self._sim_input = self._sim_input or f.simulated
         self.rec.write("radar", f.to_dict())
         self.last_radar = f
+        self.live_radar.append((f.t_wall, f))
+        snap = self.fall_snapshot
+        if snap is not None and not snap["complete"]:
+            snap["radar"].append(_radar_row(f))
+            if f.points is not None:
+                snap["cloud_after"] = _cloud(f)
+                snap["joints_after"] = _joints(f)
+            self._maybe_close_snapshot(f.t_wall)
         if self.monitoring:
             self.fsm.on_radar(f)
         self.tick(f.t_pc, f.t_wall)
@@ -132,6 +148,7 @@ class Engine:
                        simulated_input=self._sim_input, detail=dict(self.fsm.trigger_detail))
         self.last_event = ev
         self.store.save_event(ev)            # 先持久化事件，再做任何动作
+        self._open_snapshot(ev)
         self.rec.write("event", ev.to_dict())
         if self._inline:
             self._finish_event(ev, self.executor.execute(ev))
@@ -156,6 +173,36 @@ class Engine:
         self.rec.write("actuation", {"event_id": ev.event_id, "status": status.value,
                                      "mode": ev.mode.value})
         self._emit("event", ev.to_dict())    # 本地执行完成后才异步通知界面/手机
+
+    # ------------------------------------------------------------ 事件前后的传感器快照（只用于界面展示）
+    SNAP_PRE_S = 3.0
+    SNAP_POST_S = 1.5
+
+    def _open_snapshot(self, ev: FallEvent) -> None:
+        t0 = ev.t_wall - self.SNAP_PRE_S
+        frames = [f for t, f in self.live_radar if t >= t0]
+        before = next((f for f in frames if f.points is not None), None)
+        after = next((f for f in reversed(frames) if f.points is not None), None)
+        w, r = self.cfg.fusion.wrist, self.cfg.fusion.radar
+        self.fall_snapshot = {
+            "event_id": ev.event_id, "t_event": ev.t_wall, "simulated": self._sim_input,
+            "scenario": self.sim_label if self._sim_input else None,
+            "pre_s": self.SNAP_PRE_S, "post_s": self.SNAP_POST_S, "complete": False,
+            "thresholds": {"impact_accel_ms2": w.impact_accel_ms2, "freefall_accel_ms2": w.freefall_accel_ms2,
+                           "gyro_dps": w.gyro_dps, "height_drop_m": r.height_drop_m},
+            "imu": [row for row in self.live_imu if row[0] >= t0],
+            "radar": [_radar_row(f) for f in frames],
+            "cloud_before": _cloud(before) if before else None,
+            "t_cloud_before": before.t_wall if before else None,
+            "cloud_after": _cloud(after) if after else None,
+            "joints_before": _joints(before) if before else None,
+            "joints_after": _joints(after) if after else None,
+        }
+
+    def _maybe_close_snapshot(self, wall: float) -> None:
+        snap = self.fall_snapshot
+        if wall >= snap["t_event"] + self.SNAP_POST_S:
+            snap["complete"] = True
 
     def _update_led(self) -> None:
         key = (self.fsm.state, self.mode)
@@ -240,3 +287,16 @@ class Engine:
             "recorder_dropped": self.rec.dropped,
             "simulated_input": self._sim_input,
         }
+
+
+def _radar_row(f: RadarFrame) -> tuple:
+    z = next((t.z for t in f.targets if t.z is not None), None)
+    return (f.t_wall, z, None if f.points is None else len(f.points))
+
+
+def _cloud(f: RadarFrame) -> list:
+    return [list(p) for p in (f.points or [])[:300]]
+
+
+def _joints(f: RadarFrame) -> Optional[list]:
+    return None if f.joints is None else [list(j) for j in f.joints]

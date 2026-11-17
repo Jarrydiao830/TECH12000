@@ -85,6 +85,8 @@ class RadarFrame:
     t_device_us: Optional[int] = None
     device_frame: Optional[int] = None    # 雷达自带帧序号（RS6240 0xC3 frameIdx）
     cloud_kind: Optional[str] = None      # motion / presence
+    # 人体关节 (name, x_m, y_m, z_m)。目前只有模拟源给出；真实雷达固件是否输出骨架尚未确认，没有就是 None
+    joints: Optional[list[tuple[str, float, float, float]]] = None
     simulated: bool = False
     t_est: Optional[float] = None
 

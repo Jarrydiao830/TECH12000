@@ -1,3 +1,6 @@
+import pytest
+
+from tech12000.sources.sim import LABELS
 from tech12000.models import DeployStatus, Mode, SystemState as S
 
 
@@ -88,3 +91,35 @@ def test_reset_disarms(rig):
     assert rig.eng.mode is Mode.MONITOR
     rig.run(2.0)
     assert rig.eng.fsm.state is S.READY and rig.eng.mode is Mode.MONITOR
+
+
+def test_fall_snapshot_captures_imu_radar_and_point_cloud(rig):
+    rig.run(2.0)
+    assert rig.eng.fall_snapshot is None
+    rig.inject("fall")
+    rig.run(3.0)
+    snap = rig.eng.fall_snapshot
+    assert snap is not None and snap["complete"]
+    assert snap["event_id"] == rig.eng.last_event.event_id
+    te = snap["t_event"]
+    assert snap["imu"][0][0] < te < snap["imu"][-1][0]
+    assert max(t for t, *_ in snap["imu"]) >= te + snap["post_s"]
+    assert len(snap["imu"][0]) == 7                      # t + 3 accel + 3 gyro
+    assert snap["cloud_before"] and snap["cloud_after"]
+    top = lambda pts: max(p[2] for p in pts if p[4] >= 10)   # ignore low-SNR clutter
+    assert top(snap["cloud_before"]) > top(snap["cloud_after"]) + 0.5   # standing vs on the floor
+    head = lambda js: next(z for n, x, y, z in js if n == "head")
+    assert len(snap["joints_before"]) == 15
+    assert head(snap["joints_before"]) > 1.4 and head(snap["joints_after"]) < 0.5   # skeleton lies down too
+
+
+@pytest.mark.parametrize("kind", ["fall_forward", "fall_backward", "fall_side", "slip", "faint"])
+def test_each_simulated_fall_type_triggers_and_ends_lying(rig, kind):
+    rig.run(2.0)
+    rig.inject(kind)
+    rig.run(4.0)
+    assert rig.eng.fsm.state is S.TRIGGERED
+    snap = rig.eng.fall_snapshot
+    assert snap["complete"] and snap["scenario"] == LABELS[kind]
+    head = lambda js: next(z for n, x, y, z in js if n == "head")
+    assert head(snap["joints_after"]) < 0.4
