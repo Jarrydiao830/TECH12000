@@ -35,7 +35,8 @@ private struct HeroCard: View {
     @EnvironmentObject var app: AppState
 
     var body: some View {
-        let style = Theme.style(state: app.status?.state, online: app.online)
+        let style = Theme.style(state: app.status?.state, online: app.online,
+                                airbag: app.status?.last_event?.airbagTriggered == true)
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 LiveDot(live: app.online)
@@ -112,7 +113,7 @@ private struct InfoRow: View {
         HStack(spacing: 12) {
             tile("Mode", Labels.mode(status.mode), "slider.horizontal.3",
                  status.mode == "armed" ? Theme.bad : Theme.blue)
-            tile("Deploy command", Labels.deploy(status.deploy_status), "paperplane.fill",
+            tile("Airbag command", Labels.deploy(status.deploy_status), "paperplane.fill",
                  status.deploy_status == "send_failed" ? Theme.bad : Theme.teal)
         }
         .fixedSize(horizontal: false, vertical: true)   // both tiles take the taller one's height

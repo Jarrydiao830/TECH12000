@@ -14,7 +14,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// 跌倒事件提醒。通知标识用 event_id，同一事件即使重复送达，系统里也只保留一条。
     func notify(event ev: FallEvent) {
         let c = UNMutableNotificationContent()
-        c.title = ev.is_test ? "Simulated test event" : "Possible fall"
+        if ev.airbagTriggered {
+            c.title = ev.airbagDemo ? "Airbag triggered (demo)" : "Airbag triggered"
+        } else {
+            c.title = ev.is_test ? "Simulated test event" : "Possible fall"
+        }
         c.body = ev.englishMessage
         c.sound = .default
         c.interruptionLevel = .active

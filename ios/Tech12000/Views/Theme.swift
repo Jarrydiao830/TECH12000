@@ -22,7 +22,7 @@ enum Theme {
         var tint: Color { colors.first ?? .gray }
     }
 
-    static func style(state: String?, online: Bool) -> StateStyle {
+    static func style(state: String?, online: Bool, airbag: Bool = false) -> StateStyle {
         guard online, let state else {
             return StateStyle(title: "Offline", icon: "wifi.slash", colors: [Color(white: 0.55), Color(white: 0.35)])
         }
@@ -31,6 +31,9 @@ enum Theme {
             return StateStyle(title: "All clear", icon: "checkmark.shield.fill", colors: [teal, blue])
         case "suspected_fall":
             return StateStyle(title: "Possible fall", icon: "exclamationmark.triangle.fill", colors: [.orange, Color(red: 0.85, green: 0.42, blue: 0.1)])
+        case "triggered" where airbag:
+            return StateStyle(title: "Airbag triggered", icon: "exclamationmark.shield.fill",
+                              colors: [Color(red: 0.75, green: 0.02, blue: 0.08), Color(red: 0.30, green: 0.0, blue: 0.05)])
         case "triggered":
             return StateStyle(title: "Fall detected", icon: "figure.fall", colors: [bad, Color(red: 0.6, green: 0.08, blue: 0.15)])
         case "fault":

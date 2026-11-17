@@ -151,6 +151,7 @@ final class AppState: ObservableObject {
         if seenEventIDs.insert(ev.event_id).inserted {
             alert = ev
             Notifier.shared.notify(event: ev)
+            if ev.airbagTriggered { AlarmPlayer.shared.start() }   // siren until the user acknowledges
         }
     }
 

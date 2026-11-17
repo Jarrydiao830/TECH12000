@@ -21,6 +21,10 @@ struct FallEvent: Codable, Identifiable, Equatable {
     var id: String { event_id }
     var date: Date { Date(timeIntervalSince1970: t_wall) }
 
+    /// True when the computer actually sent the airbag release (or demo) command for this event.
+    var airbagTriggered: Bool { ["command_sent", "controller_acked", "demo_command_sent"].contains(deploy_status) }
+    var airbagDemo: Bool { deploy_status == "demo_command_sent" }
+
     /// English alert text, mirroring event_message() in pc/tech12000/models.py.
     /// States only what actually happened; never claims the airbag deployed.
     var englishMessage: String {
@@ -28,11 +32,11 @@ struct FallEvent: Codable, Identifiable, Equatable {
         let body: String
         switch deploy_status {
         case "command_sent", "controller_acked":
-            body = "Possible fall detected. Deploy command sent. Check on the person now."
+            body = "Possible fall detected. Airbag release command sent. Actual inflation is unknown. Check on the person now."
         case "demo_command_sent":
-            body = "Possible fall detected. Demo command sent (no real release mechanism connected)."
+            body = "Possible fall detected. Airbag demo command sent (no real release mechanism connected)."
         case "send_failed":
-            body = "Possible fall detected. Deploy command FAILED to send. Check on the person now."
+            body = "Possible fall detected. Airbag command FAILED to send. Check on the person now."
         default:
             body = "Possible fall detected. Monitor-only mode, no deploy command sent. Check on the person now."
         }
@@ -71,9 +75,9 @@ enum Labels {
     }
     /// 只陈述指令状态；没有展开反馈，绝不显示"已展开/保护成功"。
     static func deploy(_ s: String) -> String {
-        ["none": "None", "not_sent_monitor_mode": "Not sent (monitor only)", "demo_command_sent": "Demo command sent",
-         "command_sent": "Deploy command sent", "controller_acked": "Controller acknowledged",
-         "send_failed": "Command failed to send", "skipped_duplicate": "Duplicate event skipped"][s] ?? s
+        ["none": "None", "not_sent_monitor_mode": "Not sent (monitor only)", "demo_command_sent": "Sent (demo)",
+         "command_sent": "Sent", "controller_acked": "Controller acknowledged",
+         "send_failed": "Failed to send", "skipped_duplicate": "Duplicate event skipped"][s] ?? s
     }
     static func device(_ k: String) -> String {
         ["wristband": "Wristband", "radar": "Radar", "receiver": "Receiver", "servo": "Airbag"][k] ?? k

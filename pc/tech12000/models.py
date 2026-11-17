@@ -120,11 +120,11 @@ def event_message(ev: FallEvent) -> str:
     prefix = "[Simulated test] " if ev.is_test else ""
     s = ev.deploy_status
     if s in (DeployStatus.COMMAND_SENT, DeployStatus.CONTROLLER_ACKED):
-        body = "Possible fall detected. Deploy command sent. Check on the person now."
+        body = "Possible fall detected. Airbag release command sent. Actual inflation is unknown. Check on the person now."
     elif s is DeployStatus.DEMO_SENT:
-        body = "Possible fall detected. Demo command sent (no real release mechanism connected)."
+        body = "Possible fall detected. Airbag demo command sent (no real release mechanism connected)."
     elif s is DeployStatus.SEND_FAILED:
-        body = "Possible fall detected. Deploy command FAILED to send. Check on the person now."
+        body = "Possible fall detected. Airbag command FAILED to send. Check on the person now."
     else:
         body = "Possible fall detected. Monitor-only mode, no deploy command sent. Check on the person now."
     return prefix + body
