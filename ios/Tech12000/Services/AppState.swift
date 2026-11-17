@@ -3,8 +3,11 @@ import SwiftUI
 import UserNotifications
 
 /// 全局状态。App 只做展示：不参与判断，不发送任何控制指令。
+enum AppTab: Hashable { case status, events, settings }
+
 @MainActor
 final class AppState: ObservableObject {
+    @Published var tab: AppTab = .status
     @Published var pairing: Pairing? = Pairing.load()
     @Published var status: SystemStatus?
     @Published var events: [FallEvent] = []
@@ -24,6 +27,8 @@ final class AppState: ObservableObject {
 
     func start() {
         stop()
+        // Demo mode: keep the screen on while the app is in front (toggle in Settings, on by default).
+        UIApplication.shared.isIdleTimerDisabled = UserDefaults.standard.object(forKey: "keepAwake") as? Bool ?? true
         guard let pairing else { return }
         loopTask = Task { await self.runLoop(pairing) }
         staleTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -60,6 +65,7 @@ final class AppState: ObservableObject {
         p.save()
         pairing = p
         seenEventIDs.removeAll()
+        tab = .status
         start()
     }
 

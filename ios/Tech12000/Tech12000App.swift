@@ -25,11 +25,12 @@ struct RootView: View {
     @EnvironmentObject var app: AppState
 
     var body: some View {
-        TabView {
-            DashboardView().tabItem { Label("Status", systemImage: "waveform.path.ecg.rectangle") }
-            EventListView().tabItem { Label("Events", systemImage: "list.bullet") }
-            SettingsView().tabItem { Label("Settings", systemImage: "gear") }
+        TabView(selection: $app.tab) {
+            DashboardView().tabItem { Label("Status", systemImage: "shield.lefthalf.filled") }.tag(AppTab.status)
+            EventListView().tabItem { Label("Events", systemImage: "list.bullet.rectangle") }.tag(AppTab.events)
+            SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }.tag(AppTab.settings)
         }
+        .tint(Theme.blue)
         .fullScreenCover(item: $app.alert) { ev in AlertView(event: ev) }
     }
 }

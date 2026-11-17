@@ -76,6 +76,6 @@ enum Labels {
          "send_failed": "Command failed to send", "skipped_duplicate": "Duplicate event skipped"][s] ?? s
     }
     static func device(_ k: String) -> String {
-        ["wristband": "Wristband", "radar": "Radar", "receiver": "Receiver", "servo": "Servo controller"][k] ?? k
+        ["wristband": "Wristband", "radar": "Radar", "receiver": "Receiver", "servo": "Servo"][k] ?? k
     }
 }
