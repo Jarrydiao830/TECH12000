@@ -18,6 +18,9 @@ final class AppState: ObservableObject {
     private var loopTask: Task<Void, Never>?
     private var seenEventIDs = Set<String>()    // 按 event_id 去重，避免同一事件重复告警
     private var staleTimer: Timer?
+    private var lastState: String?
+    private var offlineNotified = false          // 断线提醒只发一次，重新连上后复位
+    private var bgTask: UIBackgroundTaskIdentifier = .invalid
 
     func start() {
         stop()
@@ -26,7 +29,24 @@ final class AppState: ObservableObject {
         staleTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.checkStale() }
         }
-        Task { await refreshNotificationAuth() }
+        Task {
+            await refreshNotificationAuth()
+            if notificationAuth == .notDetermined { await requestNotificationAuth() }
+        }
+    }
+
+    /// 切到后台时向系统多要一点运行时间（通常几十秒），期间仍能收到事件并发本地通知；
+    /// 时间用完或系统挂起 App 后就收不到了。
+    func enterBackground() {
+        guard bgTask == .invalid else { return }
+        bgTask = UIApplication.shared.beginBackgroundTask(withName: "keep-ws") { [weak self] in
+            Task { @MainActor in self?.endBackground(stopping: true) }
+        }
+    }
+
+    func endBackground(stopping: Bool = false) {
+        if stopping { stop() }
+        if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
     }
 
     func stop() {
@@ -53,15 +73,30 @@ final class AppState: ObservableObject {
 
     /// 超过 5 秒没有任何更新就显示离线，不把旧状态当作实时状态。
     private func checkStale() {
-        if let t = lastUpdate, Date().timeIntervalSince(t) > 5 { online = false }
+        guard let t = lastUpdate else { return }
+        let age = Date().timeIntervalSince(t)
+        if age > 5 { online = false }
+        if age > 15 && !offlineNotified {
+            offlineNotified = true
+            Notifier.shared.notifyOffline()
+        }
+    }
+
+    private func update(_ s: SystemStatus) {
+        if s.state == "fault" && lastState != nil && lastState != "fault" {
+            Notifier.shared.notifyFault(reason: s.state_reason)
+        }
+        lastState = s.state
+        status = s
+        lastUpdate = Date()
+        offlineNotified = false
     }
 
     func refresh() async {
         guard let pairing else { return }
         let api = APIClient(pairing: pairing)
         do {
-            status = try await api.status()
-            lastUpdate = Date()
+            update(try await api.status())
             let list = try await api.events()
             // 首次拉取的历史事件只入列表，不当作新告警弹出
             if seenEventIDs.isEmpty { list.forEach { seenEventIDs.insert($0.event_id) } }
@@ -91,7 +126,7 @@ final class AppState: ObservableObject {
                     online = true
                     lastUpdate = Date()
                     lastError = nil
-                    if let s = m.status { status = s }
+                    if let s = m.status { update(s) }
                     if m.type == "event", let ev = m.event { handle(ev) }
                 }
             } catch {
@@ -107,7 +142,10 @@ final class AppState: ObservableObject {
         } else {
             events.insert(ev, at: 0)
         }
-        if seenEventIDs.insert(ev.event_id).inserted { alert = ev }
+        if seenEventIDs.insert(ev.event_id).inserted {
+            alert = ev
+            Notifier.shared.notify(event: ev)
+        }
     }
 
     func refreshNotificationAuth() async {

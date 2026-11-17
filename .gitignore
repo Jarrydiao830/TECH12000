@@ -12,7 +12,8 @@ config/local.yaml
 # firmware
 .pio/
 # iOS
-ios/*.xcodeproj/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 ios/build/
 DerivedData/
 .DS_Store

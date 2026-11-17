@@ -16,7 +16,7 @@
 | 手环固件（真实 IMU） | 已按亚博协议实现，解析器在电脑上单独测试通过；同上编译通过，**未上板验证** |
 | RS6240 雷达驱动 | HIF 点云解析已按厂家源码实现，需先在 Windows 上烧 UART 固件，**未接实物验证** |
 | Hiwonder 舵机控制器驱动 | 已按官方协议实现，帧与文档示例逐字节一致，**未接实物验证** |
-| iOS App | 源码骨架，**未经 Xcode 编译** |
+| iOS App | Xcode 编译通过，模拟器中与模拟数据端到端跑通（配对、实时状态、前台告警、本地通知）；**未上真机** |
 | APNs 锁屏推送 | 未实现（第二阶段） |
 
 检测阈值全部是未标定的占位值。详见 [docs/open_items.md](docs/open_items.md)。
@@ -93,18 +93,24 @@ python3 -m venv .venv
        driver: receiver
    ```
 
-## iOS App
+## iOS App（手机提醒）
+
+工程已经在仓库里，不需要装别的工具：
 
 ```bash
-brew install xcodegen
+open ios/Tech12000.xcodeproj
 ```
 
-```bash
-cd ios && xcodegen && open Tech12000.xcodeproj
-```
+1. Xcode 左侧点 `Tech12000` 工程 → Signing & Capabilities → Team 选自己的 Apple ID；Bundle Identifier 把 `com.example` 改成自己的（如 `com.你的名字.tech12000`）。
+2. 顶部选自己的 iPhone（或模拟器），点 ▶ 运行。
+3. 电脑上先 `tech12000 run`，用系统相机扫监控台上的二维码配对；App 弹出通知权限请求时点"允许"。
 
-在 Xcode 里选择自己的 Team 后运行到 iPhone。用系统相机扫电脑监控台上的二维码即可配对。
-当前只有前台告警（App 打开时），不是锁屏推送。
+提醒方式：
+
+- App 在前台：全屏告警 + 通知横幅和提示音。
+- App 刚切到后台：系统给的几十秒内仍能收到并弹本地通知。
+- App 被挂起、被划掉或锁屏较久：**收不到**。这要靠第二阶段的 APNs 推送。
+- 与电脑断开超过 15 秒、或电脑端进入故障状态时，各提醒一次。
 
 ## 凭据
 
