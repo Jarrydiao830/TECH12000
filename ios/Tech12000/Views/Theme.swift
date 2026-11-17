@@ -42,7 +42,7 @@ enum Theme {
 
     static func deviceIcon(_ key: String) -> String {
         ["wristband": "applewatch", "radar": "dot.radiowaves.left.and.right",
-         "receiver": "antenna.radiowaves.left.and.right", "servo": "gearshape.2.fill"][key] ?? "cpu"
+         "receiver": "antenna.radiowaves.left.and.right", "servo": "shield.fill"][key] ?? "cpu"
     }
 }
 

@@ -113,7 +113,7 @@ const STATE = { initializing:['Starting up','info'], ready:['Ready · Monitoring
 const DEPLOY = { none:'None', not_sent_monitor_mode:'Not sent (monitor only)', demo_command_sent:'Demo command sent',
                  command_sent:'Deploy command sent', controller_acked:'Controller acknowledged', send_failed:'Send failed',
                  skipped_duplicate:'Duplicate event, skipped' };
-const NAMES = { wristband:'Wristband', radar:'Radar', receiver:'Receiver', servo:'Servo controller' };
+const NAMES = { wristband:'Wristband', radar:'Radar', receiver:'Receiver', servo:'Airbag (servo)' };
 const acc = [], gyr = [], MAXP = 600;
 
 function fmtT(t) { return t ? new Date(t*1000).toLocaleTimeString() : '—'; }
