@@ -15,6 +15,14 @@
 - 电脑：macOS 27.0.1。
 - 第一版单手环、单人；其余板子为备用。
 
+## 2.1 实物核实结果（据照片与用户确认）
+
+- XIAO 丝印为 "XIAO ESP32S3"，背面无 Sense 扩展接口，按普通版处理。背面有 BAT+/BAT− 焊盘（板载锂电充电）。
+- IMU 板焊盘：RX、TX、GND、5V；SDA、SCL、GND、3V3。USB-C 经板上 USB 转串口芯片，仅调试用。板上印有坐标轴（X 朝上、Y 朝左、Z 垂直板面向外）。
+- 用户确认 IMU 可 3.3 V 供电。
+- 手环接线：IMU TX→XIAO D7(GPIO44)，IMU RX→XIAO D6(GPIO43)，GND→GND，IMU 3V3→XIAO 3V3；电池+ → SS12D10 开关 → XIAO BAT+，电池− → BAT−。
+- 仍待文档确认：IMU 串口波特率、帧协议、串口电平。
+
 ## 3. 厂家资料现状
 
 | 资料 | 来源 | 状态 |
